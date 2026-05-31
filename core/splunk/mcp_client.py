@@ -99,7 +99,7 @@ class SplunkMCPClient:
     # ── Core MCP tools ──────────────────────────────────────────────────────
 
     def run_query(self, spl: str, earliest: str = "-30d", latest: str = "now", max_results: int = 10000) -> QueryResult:
-        raw = self._call("splunk_run_splunk_query", {
+        raw = self._call("splunk_run_query", {
             "query": spl,
             "earliest_time": earliest,
             "latest_time": latest,
@@ -125,27 +125,27 @@ class SplunkMCPClient:
         )
 
     def get_indexes(self) -> list[IndexInfo]:
-        raw = self._call("splunk_get_indexes", {})
+        raw = self._call("splunk_get_indexes", {"row_limit": 100})
         content = _extract_content(raw)
         indexes = []
-        for item in content.get("indexes", []):
+        for item in content.get("results", []):
             indexes.append(IndexInfo(
-                name=item.get("name", ""),
-                total_event_count=item.get("totalEventCount", 0),
-                current_size_mb=item.get("currentSizeMB", 0.0),
+                name=item.get("title", item.get("name", "")),
+                total_event_count=int(item.get("totalEventCount", 0)),
+                current_size_mb=float(item.get("currentDBSizeMB", item.get("currentSizeMB", 0.0))),
                 metadata=item,
             ))
         return indexes
 
     def get_splunk_info(self) -> dict:
-        raw = self._call("splunk_get_splunk_info", {})
+        raw = self._call("splunk_get_info", {})
         return _extract_content(raw)
 
     def discover_knowledge_objects(self, ko_type: str = "savedsearches", filter_tag: str = "") -> list[KnowledgeObject]:
         args: dict[str, Any] = {"type": ko_type}
         if filter_tag:
             args["filter"] = f'tags="{filter_tag}"'
-        raw = self._call("splunk_discover_knowledge_objects", args)
+        raw = self._call("splunk_get_knowledge_objects", args)
         content = _extract_content(raw)
         objects = []
         for item in content.get("objects", []):
