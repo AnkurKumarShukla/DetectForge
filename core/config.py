@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     # Industry
     industry_profile: str = "healthcare"
 
-    # Anthropic
-    anthropic_api_key: str = ""
+    # Together AI (NL interface)
+    together_api_key: str = ""
+    together_model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 
     # Database
     database_url: str = "sqlite:///./detectforge.db"

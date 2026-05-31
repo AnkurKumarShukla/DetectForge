@@ -23,24 +23,23 @@ class AskRequest(BaseModel):
 
 
 @router.post("/ask")
-async def ask_coverage_question(
+def ask_coverage_question(
     body: AskRequest,
     db: Annotated[Session, Depends(get_db)],
 ):
     settings = get_settings()
-    if not settings.anthropic_api_key:
-        return {"answer": "NL interface requires ANTHROPIC_API_KEY to be configured.", "error": True}
+    if not settings.together_api_key:
+        return {"answer": "NL interface requires TOGETHER_API_KEY to be configured.", "error": True}
 
     mcp = SplunkMCPClient()
     responder = NLCoverageResponder(mcp)
 
-    # Load current coverage context from DB
     coverage_map = _load_coverage_map(db)
     gaps = _load_top_gaps(db, body.industry)
 
     if body.stream:
-        async def event_stream():
-            async for chunk in responder.answer_stream(
+        def event_stream():
+            for chunk in responder.answer_stream(
                 body.question, coverage_map, gaps, body.industry, body.conversation_history
             ):
                 yield chunk
