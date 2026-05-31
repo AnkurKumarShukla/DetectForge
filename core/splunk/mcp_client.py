@@ -1,5 +1,6 @@
-"""Single MCP client for all Splunk MCP Server tool calls."""
+"""Single MCP client — Splunk MCP Server v1.2 using JSON-RPC 2.0 over HTTP."""
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -38,7 +39,7 @@ class KnowledgeObject:
 
 
 class SplunkMCPClient:
-    """Thin wrapper around the Splunk MCP Server HTTP API."""
+    """MCP client using JSON-RPC 2.0 as required by Splunk MCP Server v1.2."""
 
     def __init__(self):
         settings = get_settings()
@@ -47,28 +48,53 @@ class SplunkMCPClient:
         self._timeout = 120.0
 
     def _headers(self) -> dict:
-        h = {"Content-Type": "application/json"}
-        if self._token:
-            h["Authorization"] = f"Bearer {self._token}"
-        return h
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self._token}",
+        }
 
-    def _call(self, tool: str, params: dict) -> dict:
-        payload = {"tool": tool, "params": params}
+    def _call(self, tool_name: str, arguments: dict) -> dict:
+        """Call a tool via JSON-RPC 2.0 (MCP tools/call method)."""
+        payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments,
+            },
+        }
         try:
-            with httpx.Client(timeout=self._timeout) as client:
+            with httpx.Client(timeout=self._timeout, follow_redirects=False) as client:
                 resp = client.post(
-                    f"{self._endpoint}/call",
+                    self._endpoint,
                     json=payload,
                     headers=self._headers(),
                 )
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+
+            if "error" in data:
+                raise RuntimeError(f"MCP error {data['error'].get('code')}: {data['error'].get('message')}")
+
+            return data.get("result", {})
         except httpx.TimeoutException:
-            logger.error("MCP timeout calling %s", tool)
+            logger.error("MCP timeout calling %s", tool_name)
             raise
         except httpx.HTTPStatusError as e:
-            logger.error("MCP HTTP error %s calling %s: %s", e.response.status_code, tool, e.response.text)
+            logger.error("MCP HTTP %s calling %s: %s", e.response.status_code, tool_name, e.response.text[:300])
             raise
+
+    def list_tools(self) -> list[dict]:
+        """List all available MCP tools — use to verify connection and see what's available."""
+        payload = {"jsonrpc": "2.0", "id": str(uuid.uuid4()), "method": "tools/list", "params": {}}
+        with httpx.Client(timeout=30, follow_redirects=False) as client:
+            resp = client.post(self._endpoint, json=payload, headers=self._headers())
+        resp.raise_for_status()
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"MCP error: {data['error']}")
+        return data.get("result", {}).get("tools", [])
 
     # ── Core MCP tools ──────────────────────────────────────────────────────
 
@@ -79,18 +105,30 @@ class SplunkMCPClient:
             "latest_time": latest,
             "max_count": max_results,
         })
-        results = raw.get("results", [])
+        # MCP result comes back as content array — extract the data
+        content = raw.get("content", [])
+        result_data = {}
+        for item in content:
+            if item.get("type") == "text":
+                import json as _json
+                try:
+                    result_data = _json.loads(item["text"])
+                except Exception:
+                    pass
+
+        results = result_data.get("results", [])
         return QueryResult(
-            count=int(raw.get("result_count", len(results))),
+            count=int(result_data.get("result_count", len(results))),
             results=results,
-            messages=raw.get("messages", []),
-            raw=raw,
+            messages=result_data.get("messages", []),
+            raw=result_data,
         )
 
     def get_indexes(self) -> list[IndexInfo]:
         raw = self._call("splunk_get_indexes", {})
+        content = _extract_content(raw)
         indexes = []
-        for item in raw.get("indexes", []):
+        for item in content.get("indexes", []):
             indexes.append(IndexInfo(
                 name=item.get("name", ""),
                 total_event_count=item.get("totalEventCount", 0),
@@ -100,15 +138,17 @@ class SplunkMCPClient:
         return indexes
 
     def get_splunk_info(self) -> dict:
-        return self._call("splunk_get_splunk_info", {})
+        raw = self._call("splunk_get_splunk_info", {})
+        return _extract_content(raw)
 
     def discover_knowledge_objects(self, ko_type: str = "savedsearches", filter_tag: str = "") -> list[KnowledgeObject]:
-        params: dict[str, Any] = {"type": ko_type}
+        args: dict[str, Any] = {"type": ko_type}
         if filter_tag:
-            params["filter"] = f'tags="{filter_tag}"'
-        raw = self._call("splunk_discover_knowledge_objects", params)
+            args["filter"] = f'tags="{filter_tag}"'
+        raw = self._call("splunk_discover_knowledge_objects", args)
+        content = _extract_content(raw)
         objects = []
-        for item in raw.get("objects", []):
+        for item in content.get("objects", []):
             objects.append(KnowledgeObject(
                 name=item.get("name", ""),
                 spl=item.get("search", item.get("spl", "")),
@@ -122,15 +162,17 @@ class SplunkMCPClient:
     # ── AI Assistant tools (saia_* namespace) ───────────────────────────────
 
     def generate_spl(self, prompt: str, context: dict | None = None) -> str:
-        params = {"prompt": prompt}
+        args = {"prompt": prompt}
         if context:
-            params["context"] = context
-        raw = self._call("saia_generate_spl", params)
-        return raw.get("spl", raw.get("result", ""))
+            args["context"] = context
+        raw = self._call("saia_generate_spl", args)
+        content = _extract_content(raw)
+        return content.get("spl", content.get("result", ""))
 
     def explain_spl(self, spl: str) -> str:
         raw = self._call("saia_explain_spl", {"spl": spl})
-        return raw.get("explanation", raw.get("result", ""))
+        content = _extract_content(raw)
+        return content.get("explanation", content.get("result", ""))
 
     def optimize_spl(self, spl: str, issue: str, hits_per_day: float) -> str:
         raw = self._call("saia_optimize_spl", {
@@ -138,28 +180,29 @@ class SplunkMCPClient:
             "issue": issue,
             "hits_per_day": hits_per_day,
         })
-        return raw.get("optimized_spl", raw.get("result", spl))
+        content = _extract_content(raw)
+        return content.get("optimized_spl", content.get("result", spl))
 
     def ask_question(self, question: str, context: dict | None = None) -> str:
-        params = {"question": question}
+        args = {"question": question}
         if context:
-            params["context"] = context
-        raw = self._call("saia_ask_splunk_question", params)
-        return raw.get("answer", raw.get("result", ""))
+            args["context"] = context
+        raw = self._call("saia_ask_splunk_question", args)
+        content = _extract_content(raw)
+        return content.get("answer", content.get("result", ""))
 
-    # ── Convenience query helpers ─────────────────────────────────────────
+    # ── Convenience helpers ───────────────────────────────────────────────
 
     def check_sourcetype_exists(self, sourcetype: str, index: str = "*", lookback: str = "-30d") -> bool:
         result = self.run_query(
-            f"| metadata type=sourcetypes index={index} "
-            f"| where sourcetype=\"{sourcetype}\"",
+            f'| metadata type=sourcetypes index={index} | where sourcetype="{sourcetype}"',
             earliest=lookback,
         )
         return result.count > 0
 
     def check_field_exists(self, field: str, sourcetype: str, index: str, lookback: str = "-1h") -> bool:
         result = self.run_query(
-            f"index={index} sourcetype=\"{sourcetype}\" {field}=* earliest={lookback} | head 1 | stats count",
+            f'index={index} sourcetype="{sourcetype}" {field}=* | head 1 | stats count',
             earliest=lookback,
         )
         return result.count > 0
@@ -173,7 +216,20 @@ class SplunkMCPClient:
 
     def get_fields_for_sourcetype(self, sourcetype: str, index: str, sample_size: int = 100) -> list[str]:
         result = self.run_query(
-            f"index={index} sourcetype=\"{sourcetype}\" | head {sample_size} | fieldsummary | fields field",
+            f'index={index} sourcetype="{sourcetype}" | head {sample_size} | fieldsummary | fields field',
             earliest="-7d",
         )
         return [r.get("field", "") for r in result.results if r.get("field")]
+
+
+def _extract_content(raw: dict) -> dict:
+    """Extract JSON data from MCP content array response."""
+    import json as _json
+    content = raw.get("content", [])
+    for item in content:
+        if item.get("type") == "text":
+            try:
+                return _json.loads(item["text"])
+            except Exception:
+                pass
+    return raw
