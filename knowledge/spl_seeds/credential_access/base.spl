@@ -1,0 +1,7 @@
+index=windows (sourcetype="WinEventLog:Security" OR sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational")
+| eval technique="{TECHNIQUE_ID}"
+| bucket _time span=1h
+| stats count as events, dc(Account_Name) as unique_accounts by _time, src_ip, host
+| where events > 10 OR unique_accounts > 5
+| eval rule_name="{TECHNIQUE_ID} - {TECHNIQUE_NAME}"
+| table _time, src_ip, host, events, unique_accounts, rule_name

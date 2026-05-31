@@ -1,0 +1,20 @@
+{
+  "name": "technology",
+  "display_name": "Technology",
+  "threat_actors": [
+    {
+      "name": "APT41",
+      "type": "nation-state",
+      "techniques": ["T1190", "T1059", "T1078", "T1055", "T1070", "T1021"]
+    },
+    {
+      "name": "UNC3944",
+      "type": "cybercrime",
+      "techniques": ["T1078", "T1566", "T1110", "T1059", "T1021"]
+    }
+  ],
+  "top_techniques": ["T1078", "T1190", "T1059", "T1055", "T1003", "T1070", "T1110"],
+  "sector_context": "Technology companies face IP theft, supply chain attacks, and SaaS credential abuse. Cloud environments and CI/CD pipelines are high-value targets.",
+  "data_sensitivity": "ip_source_code",
+  "compliance": ["SOC2", "ISO-27001"]
+}

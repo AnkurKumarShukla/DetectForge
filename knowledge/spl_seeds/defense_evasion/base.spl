@@ -1,0 +1,6 @@
+index=windows (sourcetype="WinEventLog:Security" OR sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational")
+| eval technique="{TECHNIQUE_ID}"
+| stats count by EventCode, host, user
+| where EventCode IN (1102, 1100, 4719, 4739)
+| eval rule_name="{TECHNIQUE_ID} - {TECHNIQUE_NAME}"
+| table _time, host, user, EventCode, rule_name

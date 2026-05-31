@@ -1,0 +1,25 @@
+{
+  "name": "healthcare",
+  "display_name": "Healthcare",
+  "threat_actors": [
+    {
+      "name": "ALPHV/BlackCat",
+      "type": "ransomware",
+      "techniques": ["T1078", "T1021", "T1003", "T1486", "T1566"]
+    },
+    {
+      "name": "Vice Society",
+      "type": "ransomware",
+      "techniques": ["T1566", "T1059", "T1003", "T1486", "T1070"]
+    },
+    {
+      "name": "TA505",
+      "type": "cybercrime",
+      "techniques": ["T1566", "T1204", "T1059", "T1055", "T1021"]
+    }
+  ],
+  "top_techniques": ["T1078", "T1003.001", "T1486", "T1021", "T1566", "T1055", "T1070"],
+  "sector_context": "Healthcare organizations face ransomware targeting PHI, EHR systems, and medical devices. Credential theft enabling lateral movement is the primary initial access vector.",
+  "data_sensitivity": "phi",
+  "compliance": ["HIPAA", "HITECH"]
+}

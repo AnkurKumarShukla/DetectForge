@@ -1,0 +1,8 @@
+index=network (sourcetype="firewall" OR sourcetype="zeek" OR sourcetype="bro")
+| eval technique="{TECHNIQUE_ID}"
+| bucket _time span=1h
+| stats sum(bytes_out) as total_bytes_out, dc(dest_ip) as unique_destinations by _time, src_ip, host
+| where total_bytes_out > 104857600
+| eval total_mb=round(total_bytes_out/1048576, 2)
+| eval rule_name="{TECHNIQUE_ID} - {TECHNIQUE_NAME}"
+| table _time, src_ip, host, total_mb, unique_destinations, rule_name

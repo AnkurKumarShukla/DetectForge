@@ -1,0 +1,6 @@
+index=windows sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCode IN (12, 13, 14)
+| eval technique="{TECHNIQUE_ID}"
+| where match(TargetObject, "(?i)(run|runonce|services|currentversion\\\\run)")
+| stats count by host, Image, TargetObject, Details
+| eval rule_name="{TECHNIQUE_ID} - {TECHNIQUE_NAME}"
+| table _time, host, Image, TargetObject, Details, rule_name

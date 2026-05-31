@@ -1,0 +1,25 @@
+{
+  "name": "finance",
+  "display_name": "Financial Services",
+  "threat_actors": [
+    {
+      "name": "FIN7",
+      "type": "cybercrime",
+      "techniques": ["T1566", "T1059.001", "T1055", "T1003", "T1021"]
+    },
+    {
+      "name": "Lazarus Group",
+      "type": "nation-state",
+      "techniques": ["T1190", "T1059", "T1078", "T1070", "T1105"]
+    },
+    {
+      "name": "Carbanak",
+      "type": "cybercrime",
+      "techniques": ["T1566", "T1059", "T1021", "T1003", "T1070"]
+    }
+  ],
+  "top_techniques": ["T1078", "T1059.001", "T1055", "T1190", "T1566", "T1003", "T1110"],
+  "sector_context": "Financial institutions face sophisticated threat actors targeting wire transfers, SWIFT systems, and customer data. Spear-phishing and exploit of internet-facing applications are primary vectors.",
+  "data_sensitivity": "financial_pii",
+  "compliance": ["PCI-DSS", "SOX", "GLBA"]
+}

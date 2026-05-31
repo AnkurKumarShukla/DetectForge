@@ -1,0 +1,7 @@
+index=windows sourcetype="WinEventLog:Security" EventCode IN (4624, 4648, 4768, 4769)
+| eval technique="{TECHNIQUE_ID}"
+| bucket _time span=30m
+| stats dc(dest) as unique_destinations, count as auth_events by _time, src_ip, Account_Name
+| where unique_destinations > 3
+| eval rule_name="{TECHNIQUE_ID} - {TECHNIQUE_NAME}"
+| table _time, src_ip, Account_Name, unique_destinations, auth_events, rule_name
