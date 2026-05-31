@@ -1,0 +1,91 @@
+{
+  "title": "DetectForge — Financial Risk Dashboard",
+  "description": "Detection gaps ranked by annual financial exposure (FAIR model, IBM X-Force 2025)",
+  "defaultInputs": {},
+  "layout": {
+    "type": "absolute",
+    "options": {"display": "auto-scale"},
+    "structure": [
+      {"item": "viz_total_exposure",  "type": "block", "position": {"x": 0,    "y": 0,   "w": 480, "h": 150}},
+      {"item": "viz_closable",        "type": "block", "position": {"x": 480,  "y": 0,   "w": 480, "h": 150}},
+      {"item": "viz_data_gap",        "type": "block", "position": {"x": 960,  "y": 0,   "w": 480, "h": 150}},
+      {"item": "viz_top10",           "type": "block", "position": {"x": 0,    "y": 150, "w": 900, "h": 500}},
+      {"item": "viz_exposure_pie",    "type": "block", "position": {"x": 900,  "y": 150, "w": 540, "h": 500}},
+      {"item": "viz_methodology",     "type": "block", "position": {"x": 0,    "y": 650, "w": 1440,"h": 200}}
+    ],
+    "globalInputs": []
+  },
+  "dataSources": {
+    "ds_top10": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | sort -financial_exposure_usd | head 10 | eval exposure_m=round(financial_exposure_usd/1000000,2) | eval priority=round(priority_score,3) | table technique_id,technique_name,tactic,status,exposure_m,priority",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_totals": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps | stats sum(financial_exposure_usd) as total, sum(eval(if(status=\"CLOSABLE\",financial_exposure_usd,0))) as closable, sum(eval(if(status=\"DATA_GAP\",financial_exposure_usd,0))) as data_gap by industry",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_by_tactic": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | stats sum(financial_exposure_usd) as exposure by tactic | eval exposure_m=round(exposure/1000000,2) | sort -exposure",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    }
+  },
+  "visualizations": {
+    "viz_total_exposure": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_totals"},
+      "options": {"majorField": "total", "unit": "$", "unitPosition": "before", "majorColor": "#e74c3c", "backgroundColor": "#1a1a2e"},
+      "title": "Total Annual Exposure"
+    },
+    "viz_closable": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_totals"},
+      "options": {"majorField": "closable", "unit": "$", "unitPosition": "before", "majorColor": "#f39c12", "backgroundColor": "#1a1a2e"},
+      "title": "Closable Now (have data)"
+    },
+    "viz_data_gap": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_totals"},
+      "options": {"majorField": "data_gap", "unit": "$", "unitPosition": "before", "majorColor": "#95a5a6", "backgroundColor": "#1a1a2e"},
+      "title": "Needs Log Collection"
+    },
+    "viz_top10": {
+      "type": "splunk.table",
+      "dataSources": {"primary": "ds_top10"},
+      "options": {
+        "backgroundColor": "#1a1a2e",
+        "columnFormatting": {
+          "status": {
+            "data": "> table | seriesByName(\"status\") | formatByValue(matchMode=\"regex\") | case(\"CLOSABLE\", {\"background\":\"#e74c3c\"}), case(\"DATA_GAP\", {\"background\":\"#95a5a6\"}), case(\"DATA_PARTIAL\", {\"background\":\"#f39c12\"})"
+          }
+        }
+      },
+      "title": "Top 10 Gaps by Annual Exposure ($M)"
+    },
+    "viz_exposure_pie": {
+      "type": "splunk.pie",
+      "dataSources": {"primary": "ds_by_tactic"},
+      "options": {
+        "labelField": "tactic",
+        "valueField": "exposure_m",
+        "backgroundColor": "#1a1a2e"
+      },
+      "title": "Exposure by Tactic"
+    },
+    "viz_methodology": {
+      "type": "splunk.markdown",
+      "options": {
+        "markdown": "**Methodology:** FAIR financial model — Annual Loss Expectancy = Threat Event Frequency × Org Size Factor × Industry Score × Breach Cost. Data sources: IBM Cost of a Data Breach 2025 ($9.8M healthcare avg), Verizon DBIR 2025. Figures are estimates for risk prioritisation only."
+      },
+      "title": "Methodology"
+    }
+  }
+}

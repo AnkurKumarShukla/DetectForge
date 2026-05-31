@@ -1,0 +1,109 @@
+{
+  "title": "DetectForge — ATT&CK Coverage Heatmap",
+  "description": "MITRE ATT&CK coverage status by tactic and technique",
+  "defaultInputs": {},
+  "layout": {
+    "type": "absolute",
+    "options": {"display": "auto-scale"},
+    "structure": [
+      {"item": "viz_summary",    "type": "block", "position": {"x": 0,    "y": 0,   "w": 500, "h": 150}},
+      {"item": "viz_exposure",   "type": "block", "position": {"x": 500,  "y": 0,   "w": 500, "h": 150}},
+      {"item": "viz_rules",      "type": "block", "position": {"x": 1000, "y": 0,   "w": 440, "h": 150}},
+      {"item": "viz_gaps_table", "type": "block", "position": {"x": 0,    "y": 150, "w": 1440, "h": 500}},
+      {"item": "viz_tactic_bar", "type": "block", "position": {"x": 0,    "y": 650, "w": 1440, "h": 350}}
+    ],
+    "globalInputs": []
+  },
+  "dataSources": {
+    "ds_gaps": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | eval exposure_m=round(financial_exposure_usd/1000000,2) | sort -financial_exposure_usd | table technique_id,technique_name,tactic,status,exposure_m,priority_score",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_coverage": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_coverage | tail 1",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_rules": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_rules | stats count as total, count(eval(status=\"DEPLOYED\")) as deployed, count(eval(status=\"BROKEN\")) as broken by industry",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_tactic": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | stats sum(financial_exposure_usd) as total_exposure, count as gap_count by tactic | sort -total_exposure | eval exposure_m=round(total_exposure/1000000,2)",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    }
+  },
+  "visualizations": {
+    "viz_summary": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_coverage"},
+      "options": {
+        "majorField": "coverage_pct",
+        "majorColor": "#2ecc71",
+        "unit": "%",
+        "backgroundColor": "#1a1a2e"
+      },
+      "title": "ATT&CK Coverage"
+    },
+    "viz_exposure": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_coverage"},
+      "options": {
+        "majorField": "financial_exposure_usd",
+        "majorColor": "#e74c3c",
+        "unitPosition": "before",
+        "unit": "$",
+        "backgroundColor": "#1a1a2e"
+      },
+      "title": "Annual Gap Exposure"
+    },
+    "viz_rules": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_rules"},
+      "options": {
+        "majorField": "deployed",
+        "majorColor": "#3498db",
+        "backgroundColor": "#1a1a2e"
+      },
+      "title": "Rules Deployed"
+    },
+    "viz_gaps_table": {
+      "type": "splunk.table",
+      "dataSources": {"primary": "ds_gaps"},
+      "options": {
+        "backgroundColor": "#1a1a2e",
+        "headerBackgroundColor": "#16213e",
+        "rowBackgroundColorOdd": "#0f3460",
+        "columnFormatting": {
+          "status": {
+            "data": "> table | seriesByName(\"status\") | formatByValue(matchMode=\"regex\") | case(\"GAP\", {\"background\":\"#e74c3c\"}), case(\"DATA_GAP\", {\"background\":\"#f39c12\"}), case(\"CLOSABLE\", {\"background\":\"#2ecc71\"})"
+          }
+        }
+      },
+      "title": "Top Gaps by Financial Exposure"
+    },
+    "viz_tactic_bar": {
+      "type": "splunk.bar",
+      "dataSources": {"primary": "ds_tactic"},
+      "options": {
+        "xField": "tactic",
+        "yField": "exposure_m",
+        "seriesColors": ["#e74c3c"],
+        "backgroundColor": "#1a1a2e",
+        "xAxisLabelRotation": -45
+      },
+      "title": "Financial Exposure by Tactic ($M)"
+    }
+  }
+}

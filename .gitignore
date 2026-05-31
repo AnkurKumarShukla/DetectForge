@@ -25,5 +25,8 @@ wheels/
 .coverage
 htmlcov/
 
-# Large data files (downloaded at runtime)
+# Large data files
 knowledge/attack/enterprise-attack.json
+data/*.tgz
+data/*.zip
+data/botsv3_extracted/

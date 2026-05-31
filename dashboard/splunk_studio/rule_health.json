@@ -1,0 +1,100 @@
+{
+  "title": "DetectForge — Rule Health & Drift Monitor",
+  "description": "Live status of all deployed detection rules and drift events",
+  "defaultInputs": {},
+  "layout": {
+    "type": "absolute",
+    "options": {"display": "auto-scale"},
+    "structure": [
+      {"item": "viz_healthy",     "type": "block", "position": {"x": 0,    "y": 0,   "w": 360, "h": 150}},
+      {"item": "viz_broken",     "type": "block", "position": {"x": 360,  "y": 0,   "w": 360, "h": 150}},
+      {"item": "viz_drift_count","type": "block", "position": {"x": 720,  "y": 0,   "w": 360, "h": 150}},
+      {"item": "viz_coverage",   "type": "block", "position": {"x": 1080, "y": 0,   "w": 360, "h": 150}},
+      {"item": "viz_rules_table","type": "block", "position": {"x": 0,    "y": 150, "w": 1440,"h": 500}},
+      {"item": "viz_drift_table","type": "block", "position": {"x": 0,    "y": 650, "w": 1440,"h": 350}}
+    ],
+    "globalInputs": []
+  },
+  "dataSources": {
+    "ds_rules": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_rules | table technique_id,technique_name,tactic,status,hits_per_day,false_pos_estimate,tuning_rounds,deployed_at,splunk_search_name | sort status,technique_id",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_summary": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_rules | stats count(eval(status=\"DEPLOYED\")) as healthy, count(eval(status=\"BROKEN\")) as broken, count as total by industry",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    },
+    "ds_drift": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_drift_events | sort -detected_at | table rule_id,drift_type,detail,detected_at,resolved_at,resolution",
+        "queryParameters": {"earliest": "-7d", "latest": "now"}
+      }
+    },
+    "ds_coverage_now": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_coverage | tail 1 | fields coverage_pct",
+        "queryParameters": {"earliest": "-1d", "latest": "now"}
+      }
+    }
+  },
+  "visualizations": {
+    "viz_healthy": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_summary"},
+      "options": {"majorField": "healthy", "majorColor": "#2ecc71", "backgroundColor": "#1a1a2e"},
+      "title": "Rules Healthy"
+    },
+    "viz_broken": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_summary"},
+      "options": {"majorField": "broken", "majorColor": "#e74c3c", "backgroundColor": "#1a1a2e"},
+      "title": "Rules Broken"
+    },
+    "viz_drift_count": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_drift"},
+      "options": {"majorField": "count", "majorColor": "#f39c12", "backgroundColor": "#1a1a2e"},
+      "title": "Drift Events (7d)"
+    },
+    "viz_coverage": {
+      "type": "splunk.singlevalue",
+      "dataSources": {"primary": "ds_coverage_now"},
+      "options": {"majorField": "coverage_pct", "unit": "%", "majorColor": "#3498db", "backgroundColor": "#1a1a2e"},
+      "title": "Current Coverage"
+    },
+    "viz_rules_table": {
+      "type": "splunk.table",
+      "dataSources": {"primary": "ds_rules"},
+      "options": {
+        "backgroundColor": "#1a1a2e",
+        "columnFormatting": {
+          "status": {
+            "data": "> table | seriesByName(\"status\") | formatByValue(matchMode=\"regex\") | case(\"DEPLOYED\", {\"background\":\"#2ecc71\",\"color\":\"#000\"}), case(\"BROKEN\", {\"background\":\"#e74c3c\",\"color\":\"#fff\"}), case(\"PENDING_REVIEW\", {\"background\":\"#f39c12\",\"color\":\"#000\"})"
+          }
+        }
+      },
+      "title": "All Rules — Live Status"
+    },
+    "viz_drift_table": {
+      "type": "splunk.table",
+      "dataSources": {"primary": "ds_drift"},
+      "options": {
+        "backgroundColor": "#1a1a2e",
+        "columnFormatting": {
+          "drift_type": {
+            "data": "> table | seriesByName(\"drift_type\") | formatByValue(matchMode=\"regex\") | case(\"SCHEMA_DRIFT\", {\"background\":\"#e74c3c\"}), case(\"DATA_STALE\", {\"background\":\"#e74c3c\"}), case(\"SILENT\", {\"background\":\"#f39c12\"})"
+          }
+        }
+      },
+      "title": "Drift Events (Last 7 Days)"
+    }
+  }
+}

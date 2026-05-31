@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import coverage, gaps, nl_query, review, rules, scans
+from api.routers import attack_path, coverage, gaps, genealogy, nl_query, review, rules, scans
 from db.database import init_db
 from scheduler.scheduler import start_scheduler, stop_scheduler
 
@@ -48,6 +48,8 @@ app.include_router(coverage.router, prefix="/api/v1")
 app.include_router(review.router, prefix="/api/v1")
 app.include_router(gaps.router, prefix="/api/v1")
 app.include_router(nl_query.router, prefix="/api/v1")
+app.include_router(attack_path.router, prefix="/api/v1")
+app.include_router(genealogy.router, prefix="/api/v1")
 
 
 @app.get("/health")
