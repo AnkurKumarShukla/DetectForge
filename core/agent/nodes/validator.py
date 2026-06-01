@@ -25,12 +25,12 @@ def validate_spl(spl: str, index: str, sourcetype: str, mcp: SplunkMCPClient) ->
     settings = get_settings()
     good_threshold = settings.hits_per_day_good_threshold
     very_noisy_threshold = settings.hits_per_day_very_noisy_threshold
-    lookback = "earliest=-30d"
+    lookback = "earliest=0"
 
     # Run the rule itself
     try:
-        count_spl = f"{spl} {lookback} | stats count as total_hits"
-        result = mcp.run_query(count_spl, earliest="-30d")
+        count_spl = f"{spl} | stats count as total_hits"
+        result = mcp.run_query(count_spl, earliest="0")
         total_hits = int(result.results[0].get("total_hits", 0)) if result.results else result.count
     except Exception as e:
         logger.error("Validation query failed: %s", e)
@@ -42,13 +42,13 @@ def validate_spl(spl: str, index: str, sourcetype: str, mcp: SplunkMCPClient) ->
             "false_pos_estimate": "UNKNOWN",
         }
 
-    hits_per_day = round(total_hits / 30, 2)
+    hits_per_day = round(total_hits / 60, 2)  # botsv3 spans ~60 days
 
     if total_hits == 0:
         # Critical distinction: absent data vs broken rule
         data_check = mcp.run_query(
             f"index={index} sourcetype=\"{sourcetype}\" | head 1 | stats count",
-            earliest="-30d",
+            earliest="0",
         )
         underlying_data_exists = data_check.count > 0 or (data_check.results and int(data_check.results[0].get("count", 0)) > 0)
 

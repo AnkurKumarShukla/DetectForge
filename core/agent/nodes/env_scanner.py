@@ -11,6 +11,21 @@ from db.models import EnvSnapshot
 
 logger = logging.getLogger(__name__)
 
+# Only deeply inspect these security-relevant sourcetypes — skip everything else
+SECURITY_SOURCETYPES = {
+    "wineventlog:security", "xmlwineventlog:security",
+    "xmlwineventlog:microsoft-windows-sysmon/operational",
+    "wineventlog:system", "wineventlog:application",
+    "xmlwineventlog:microsoft-windows-powershell/operational",
+    "syslog", "linux:audit", "linux:syslog",
+    "aws:cloudtrail", "aws:cloudwatchlogs", "aws:cloudwatchlogs:vpcflow",
+    "cisco:asa", "cisco:firepower", "palo:traffic", "palo:threat",
+    "stream:http", "stream:dns", "stream:tcp", "stream:ip",
+    "osquery:results", "zeek:conn", "bro:conn",
+    "crowdstrike:events", "carbon_black:events",
+    "symantec:ep:packet:file", "symantec:ep:traffic:file",
+}
+
 
 def run_env_scanner(state: dict, db: Session, mcp: SplunkMCPClient) -> dict:
     logger.info("[Phase 1] Environment Scanner starting — scan_id=%s", state["scan_id"])
@@ -21,76 +36,66 @@ def run_env_scanner(state: dict, db: Session, mcp: SplunkMCPClient) -> dict:
         "splunk_version": "",
         "indexes": {},
         "existing_rules": [],
-        "missing_sourcetypes": [],
     }
 
-    # Splunk version
+    # Splunk version — one call
     try:
         info = mcp.get_splunk_info()
-        fingerprint["splunk_version"] = info.get("version", "unknown")
+        results = info.get("results", [{}])
+        fingerprint["splunk_version"] = results[0].get("version", "unknown") if results else "unknown"
     except Exception as e:
         logger.warning("Could not get Splunk info: %s", e)
 
-    # Index inventory
+    # Index inventory — get all indexes, then get sourcetypes per index in one batch
     try:
         indexes = mcp.get_indexes()
         for idx in indexes:
             if idx.name.startswith("_"):
                 continue
-            sourcetypes = mcp.get_sourcetypes_for_index(idx.name)
-            sourcetype_details: dict = {}
-            for st in sourcetypes:
-                fields = mcp.get_fields_for_sourcetype(st, idx.name)
-                # Check freshness
-                freshness = mcp.run_query(
-                    f"index={idx.name} sourcetype=\"{st}\" | tail 1 | fields _time",
-                    earliest="-30d",
-                )
-                last_event = None
-                if freshness.results:
-                    last_event = freshness.results[0].get("_time")
 
-                sourcetype_details[st] = {
-                    "fields": fields[:50],  # cap at 50 fields
-                    "last_event_utc": last_event,
-                }
+            # Single query to get ALL sourcetypes for this index
+            sourcetypes_raw = mcp.get_sourcetypes_for_index(idx.name)
+            sourcetype_details: dict = {}
+
+            for st in sourcetypes_raw:
+                st_lower = st.lower()
+                if st_lower in SECURITY_SOURCETYPES:
+                    # Deep inspect: get fields (one MCP call)
+                    fields = mcp.get_fields_for_sourcetype(st, idx.name)
+                    sourcetype_details[st] = {"fields": fields[:50], "security_relevant": True}
+                else:
+                    # Shallow: just record it exists, no extra MCP call
+                    sourcetype_details[st] = {"fields": [], "security_relevant": False}
+
             fingerprint["indexes"][idx.name] = {
                 "sourcetypes": sourcetype_details,
                 "total_event_count": idx.total_event_count,
                 "current_size_mb": idx.current_size_mb,
             }
-        logger.info("Scanned %d indexes", len(fingerprint["indexes"]))
+
+        logger.info("Scanned %d indexes, %d total sourcetypes",
+                    len(fingerprint["indexes"]),
+                    sum(len(v["sourcetypes"]) for v in fingerprint["indexes"].values()))
     except Exception as e:
         logger.error("Index scan failed: %s", e)
         state.setdefault("errors", []).append(f"env_scanner index scan: {e}")
 
-    # Existing saved searches
+    # Existing saved searches — one call
     try:
         kos = mcp.discover_knowledge_objects()
-        rules = []
-        for ko in kos:
-            if ko.spl:
-                rules.append({
-                    "name": ko.name,
-                    "spl": ko.spl,
-                    "enabled": ko.enabled,
-                    "description": ko.description,
-                })
-        fingerprint["existing_rules"] = rules
-        logger.info("Found %d existing saved searches", len(rules))
+        fingerprint["existing_rules"] = [
+            {"name": ko.name, "spl": ko.spl, "enabled": ko.enabled, "description": ko.description}
+            for ko in kos if ko.spl
+        ]
+        logger.info("Found %d existing saved searches", len(fingerprint["existing_rules"]))
     except Exception as e:
-        logger.error("Knowledge object discovery failed: %s", e)
+        logger.error("KO discovery failed: %s", e)
         state.setdefault("errors", []).append(f"env_scanner ko discovery: {e}")
 
     schema_hash = hashlib.md5(json.dumps(fingerprint, sort_keys=True).encode()).hexdigest()
     fingerprint["schema_hash"] = schema_hash
 
-    # Persist to DB
-    snapshot = EnvSnapshot(
-        scan_id=state["scan_id"],
-        fingerprint=fingerprint,
-        schema_hash=schema_hash,
-    )
+    snapshot = EnvSnapshot(scan_id=state["scan_id"], fingerprint=fingerprint, schema_hash=schema_hash)
     db.add(snapshot)
     db.commit()
 

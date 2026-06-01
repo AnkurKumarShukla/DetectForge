@@ -10,25 +10,10 @@ logger = logging.getLogger(__name__)
 
 SEEDS_DIR = Path(__file__).parent.parent.parent.parent / "knowledge" / "spl_seeds"
 
-GENERATION_PROMPT_TEMPLATE = """Generate a production-ready Splunk SPL detection rule.
-
-TECHNIQUE: {technique_id} — {technique_name}
-TACTIC: {tactic}
-WHAT TO DETECT: {detection_guidance}
-
-ENVIRONMENT (use ONLY these exact field names and values):
-  Available indexes: {index_list}
-  Available sourcetypes: {sourcetype_list}
-  Sample fields: {field_list}
-
-REQUIREMENTS:
-1. Use ONLY the field names and sourcetypes listed above — never invent field names
-2. Include statistical aggregation where appropriate (stats, timechart)
-3. Set time windows appropriate for this technique's typical execution speed
-4. End with: | eval rule_name="{technique_id} - {technique_name}"
-5. Keep it under 20 lines
-
-OUTPUT: SPL query only. No explanation. No markdown fences. No comments."""
+GENERATION_PROMPT_TEMPLATE = """Write a Splunk SPL detection rule for MITRE ATT&CK {technique_id} ({technique_name}), tactic: {tactic}.
+Use index=botsv3 with sourcetypes: {sourcetype_list}.
+Include stats aggregation. End with: | eval rule_name="{technique_id} - {technique_name}"
+Return SPL only, no explanation."""
 
 
 def build_generation_context(gap: dict, env_fingerprint: dict) -> dict:
@@ -93,7 +78,7 @@ def run_spl_generator(
         full_prompt = prompt if not feedback else f"{prompt}\n\nPrevious attempt was rejected.\nFeedback: {feedback}\nPlease fix these issues."
 
         try:
-            spl = mcp.generate_spl(full_prompt)
+            spl = mcp.generate_spl(full_prompt, additional_context=f"Available fields: {ctx.get('field_list','')}"[:500])
             if not spl.strip():
                 logger.warning("[SPL Gen] Attempt %d/%d: empty response", attempt, max_attempts)
                 continue

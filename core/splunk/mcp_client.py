@@ -161,35 +161,30 @@ class SplunkMCPClient:
 
     # ── AI Assistant tools (saia_* namespace) ───────────────────────────────
 
-    def generate_spl(self, prompt: str, context: dict | None = None) -> str:
-        args = {"prompt": prompt}
-        if context:
-            args["context"] = context
-        raw = self._call("saia_generate_spl", args)
-        content = _extract_content(raw)
-        return content.get("spl", content.get("result", ""))
+    # ── AI Assistant tools via Together AI (Llama 3.3 70B) ─────────────────
+    # saia_* tools require Splunk AI Assistant Cloud configuration.
+    # We implement equivalent functionality using Together AI.
+
+    def generate_spl(self, prompt: str, additional_context: str = "") -> str:
+        ctx = f"\n\nContext: {additional_context}" if additional_context else ""
+        system = "You are a Splunk SPL expert. Return only valid SPL — no explanation, no markdown fences."
+        user = f"{prompt}{ctx}"
+        return _llm_call(system, user[:3000])
 
     def explain_spl(self, spl: str) -> str:
-        raw = self._call("saia_explain_spl", {"spl": spl})
-        content = _extract_content(raw)
-        return content.get("explanation", content.get("result", ""))
+        system = "You are a security analyst. Explain what this Splunk SPL query detects in plain English. Be concise (2-3 sentences)."
+        return _llm_call(system, f"SPL:\n{spl}")
 
-    def optimize_spl(self, spl: str, issue: str, hits_per_day: float) -> str:
-        raw = self._call("saia_optimize_spl", {
-            "spl": spl,
-            "issue": issue,
-            "hits_per_day": hits_per_day,
-        })
-        content = _extract_content(raw)
-        return content.get("optimized_spl", content.get("result", spl))
+    def optimize_spl(self, spl: str, issue: str = "", hits_per_day: float = 0) -> str:
+        system = "You are a Splunk SPL expert. Return only the optimized SPL — no explanation, no markdown fences."
+        user = f"Optimize this SPL to reduce false positives (currently {hits_per_day:.0f} hits/day). {issue}\n\nSPL:\n{spl}"
+        result = _llm_call(system, user[:3000])
+        return result if result.strip() else spl
 
-    def ask_question(self, question: str, context: dict | None = None) -> str:
-        args = {"question": question}
-        if context:
-            args["context"] = context
-        raw = self._call("saia_ask_splunk_question", args)
-        content = _extract_content(raw)
-        return content.get("answer", content.get("result", ""))
+    def ask_question(self, question: str, additional_context: str = "") -> str:
+        system = "You are a Splunk and security expert. Answer concisely and accurately."
+        ctx = f"\nContext: {additional_context}" if additional_context else ""
+        return _llm_call(system, f"{question}{ctx}")
 
     # ── Convenience helpers ───────────────────────────────────────────────
 
@@ -210,14 +205,14 @@ class SplunkMCPClient:
     def get_sourcetypes_for_index(self, index: str) -> list[str]:
         result = self.run_query(
             f"| metadata type=sourcetypes index={index} | fields sourcetype",
-            earliest="-30d",
+            earliest="0",
         )
         return [r.get("sourcetype", "") for r in result.results if r.get("sourcetype")]
 
     def get_fields_for_sourcetype(self, sourcetype: str, index: str, sample_size: int = 100) -> list[str]:
         result = self.run_query(
             f'index={index} sourcetype="{sourcetype}" | head {sample_size} | fieldsummary | fields field',
-            earliest="-7d",
+            earliest="0",
         )
         return [r.get("field", "") for r in result.results if r.get("field")]
 
@@ -233,3 +228,31 @@ def _extract_content(raw: dict) -> dict:
             except Exception:
                 pass
     return raw
+
+
+def _extract_text(raw: dict) -> str:
+    """Extract plain text from MCP content array response (for saia_* tools)."""
+    content = raw.get("content", [])
+    parts = []
+    for item in content:
+        if item.get("type") == "text":
+            parts.append(item["text"])
+    return "\n".join(parts).strip()
+
+
+def _llm_call(system: str, user: str) -> str:
+    """Call Together AI (Llama 3.3 70B) — used for all saia_* equivalent tools."""
+    from openai import OpenAI
+    from core.config import get_settings
+    settings = get_settings()
+    client = OpenAI(api_key=settings.together_api_key, base_url="https://api.together.xyz/v1")
+    resp = client.chat.completions.create(
+        model=settings.together_model,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        max_tokens=800,
+        temperature=0.1,
+    )
+    return resp.choices[0].message.content.strip()

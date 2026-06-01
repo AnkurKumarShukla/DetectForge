@@ -106,27 +106,46 @@ def _get_available_sourcetypes(env_fingerprint: dict) -> set[str]:
 
 
 def _estimate_data_availability(technique, available_sourcetypes: set[str]) -> float:
-    """Rough heuristic: check if any known data source for this technique is present."""
-    if not technique.data_sources:
-        return DATA_PARTIAL_SCORE
+    """
+    Tactic-based heuristic for ATT&CK v15 (data sources moved to relationship objects).
+    Maps each tactic to the sourcetype patterns that cover it.
+    """
+    # What sourcetype families are present?
+    has_windows  = any("wineventlog" in st or "sysmon" in st for st in available_sourcetypes)
+    has_network  = any(p in st for st in available_sourcetypes
+                       for p in ["stream:", "cisco", "zeek", "bro", "suricata", "firewall", "netflow"])
+    has_cloud    = any(p in st for st in available_sourcetypes
+                       for p in ["aws:", "azure", "gcp", "cloudtrail", "office365", "o365"])
+    has_endpoint = any(p in st for st in available_sourcetypes
+                       for p in ["crowdstrike", "carbon_black", "osquery", "symantec"])
+    has_linux    = any(p in st for st in available_sourcetypes
+                       for p in ["syslog", "linux:", "bash_history", "auth.log"])
 
-    # Map ATT&CK data sources to common Splunk sourcetype patterns
-    source_patterns = {
-        "process": ["sysmon", "wineventlog", "crowdstrike", "carbon_black", "endpoint"],
-        "network": ["zeek", "suricata", "bro", "firewall", "cisco", "palo_alto", "netflow"],
-        "file": ["sysmon", "wineventlog", "carbon_black"],
-        "authentication": ["wineventlog:security", "okta", "azure_ad", "auth"],
-        "command": ["sysmon", "powershell", "wineventlog"],
-        "registry": ["sysmon", "wineventlog"],
-        "cloud": ["aws", "azure", "gcp", "cloudtrail", "office365"],
-        "email": ["o365", "exchange", "proofpoint", "mimecast"],
+    # Tactic → required data families
+    tactic_requirements: dict[str, list[bool]] = {
+        "credential-access":    [has_windows],
+        "lateral-movement":     [has_windows or has_network],
+        "execution":            [has_windows or has_linux or has_endpoint],
+        "persistence":          [has_windows or has_linux],
+        "privilege-escalation": [has_windows or has_linux],
+        "defense-evasion":      [has_windows or has_linux or has_endpoint],
+        "discovery":            [has_windows or has_linux or has_endpoint],
+        "collection":           [has_windows or has_endpoint],
+        "command-and-control":  [has_network],
+        "exfiltration":         [has_network or has_cloud],
+        "impact":               [has_windows or has_network],
+        "initial-access":       [has_network or has_cloud or has_windows],
+        "reconnaissance":       [has_network],
+        "resource-development": [has_network or has_cloud],
     }
 
-    for data_source in technique.data_sources:
-        ds_lower = data_source.lower()
-        for category, patterns in source_patterns.items():
-            if category in ds_lower:
-                if any(p in st for st in available_sourcetypes for p in patterns):
-                    return DATA_AVAILABLE_SCORE
+    for tactic in technique.kill_chain_phases:
+        reqs = tactic_requirements.get(tactic, [])
+        if reqs and any(reqs):
+            return DATA_AVAILABLE_SCORE
 
-    return DATA_PARTIAL_SCORE
+    # Fallback: if we have windows + network, most techniques are coverable
+    if has_windows and has_network:
+        return DATA_AVAILABLE_SCORE
+
+    return DATA_PARTIAL_SCORE if (has_windows or has_network or has_cloud) else DATA_MISSING_SCORE
