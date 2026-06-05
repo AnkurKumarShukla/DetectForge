@@ -141,14 +141,16 @@ class SplunkMCPClient:
         raw = self._call("splunk_get_info", {})
         return _extract_content(raw)
 
-    def discover_knowledge_objects(self, ko_type: str = "savedsearches", filter_tag: str = "") -> list[KnowledgeObject]:
-        args: dict[str, Any] = {"type": ko_type}
+    def discover_knowledge_objects(self, ko_type: str = "saved_searches", filter_tag: str = "", row_limit: int = 1000) -> list[KnowledgeObject]:
+        # Default row_limit is 100 server-side, which silently truncates large
+        # environments — request enough to capture every saved search.
+        args: dict[str, Any] = {"type": ko_type, "row_limit": row_limit}
         if filter_tag:
             args["filter"] = f'tags="{filter_tag}"'
         raw = self._call("splunk_get_knowledge_objects", args)
         content = _extract_content(raw)
         objects = []
-        for item in content.get("objects", []):
+        for item in content.get("results", content.get("objects", [])):
             objects.append(KnowledgeObject(
                 name=item.get("name", ""),
                 spl=item.get("search", item.get("spl", "")),
@@ -241,13 +243,18 @@ def _extract_text(raw: dict) -> str:
 
 
 def _llm_call(system: str, user: str) -> str:
-    """Call Together AI (Llama 3.3 70B) — used for all saia_* equivalent tools."""
+    """Call the LLM (Llama 3.3 70B via Together AI) — saia_* equivalent tools.
+
+    Uses an instruct model that returns content directly; gpt-oss reasoning
+    models spend the entire token budget on hidden reasoning and return empty
+    content, which silently broke SPL generation.
+    """
     from openai import OpenAI
     from core.config import get_settings
     settings = get_settings()
     client = OpenAI(api_key=settings.together_api_key, base_url="https://api.together.xyz/v1")
     resp = client.chat.completions.create(
-        model=settings.together_model,
+        model=settings.together_model,  # Llama 3.3 70B Instruct
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},

@@ -23,6 +23,22 @@ THREAT_ACTOR_CHAINS: dict[str, dict[str, list[str]]] = {
 }
 
 
+def technique_in(tid: str, technique_keys) -> bool:
+    """Match a technique against a set/dict of technique IDs, tolerant of the
+    parent/sub-technique distinction. A chain step T1003 is satisfied by a
+    classified T1003 OR any T1003.xxx; a step T1059.001 is satisfied by T1059.
+
+    This keeps the WOW features robust to the LLM classifier returning a
+    sub-technique where the kill chain lists the parent (or vice versa).
+    """
+    if tid in technique_keys:
+        return True
+    parent = tid.split(".")[0]
+    if parent in technique_keys:
+        return True
+    return any(str(k).split(".")[0] == parent for k in technique_keys)
+
+
 @dataclass
 class ChainStep:
     technique_id: str
@@ -60,9 +76,9 @@ def score_actor_chain(
         name = tech.name if tech else tid
         tactic = (tech.tactics[0] if tech and tech.tactics else "")
 
-        if tid in broken_rule_techniques:
+        if technique_in(tid, broken_rule_techniques):
             status = "BROKEN"
-        elif tid in coverage_map:
+        elif technique_in(tid, coverage_map):
             status = "COVERED"
         else:
             status = "GAP"

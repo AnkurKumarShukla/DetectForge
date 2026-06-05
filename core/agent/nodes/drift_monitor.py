@@ -18,29 +18,33 @@ def check_rule_health(rule: Rule, mcp: SplunkMCPClient, db: Session) -> list[dic
     Run three health checks on a deployed rule.
     Returns a list of issues found. Empty list = HEALTHY.
     """
+    from core.config import get_settings
+    settings = get_settings()
+
     issues: list[dict] = []
 
     if not rule.splunk_search_name or rule.status != "DEPLOYED":
         return issues
 
-    # Check 1: Has the rule fired in the last 72 hours?
-    try:
-        fires = mcp.run_query(
-            f'index=_audit action=search info=completed search_name="{rule.splunk_search_name}" earliest=-{SILENT_WINDOW_HOURS}h | stats count',
-            earliest=f"-{SILENT_WINDOW_HOURS}h",
-        )
-        fire_count = fires.count or (int(fires.results[0].get("count", 0)) if fires.results else 0)
-        if fire_count == 0:
-            issues.append({
-                "type": "SILENT",
-                "severity": "HIGH",
-                "detail": f"No fires in last {SILENT_WINDOW_HOURS} hours",
-            })
-    except Exception as e:
-        logger.warning("Silent check failed for %s: %s", rule.splunk_search_name, e)
+    # Check 1: Has the rule fired in the last 72 hours? (real-time — needs live data)
+    if settings.drift_silent_check_enabled:
+        try:
+            fires = mcp.run_query(
+                f'index=_audit action=search info=completed search_name="{rule.splunk_search_name}" earliest=-{SILENT_WINDOW_HOURS}h | stats count',
+                earliest=f"-{SILENT_WINDOW_HOURS}h",
+            )
+            fire_count = fires.count or (int(fires.results[0].get("count", 0)) if fires.results else 0)
+            if fire_count == 0:
+                issues.append({
+                    "type": "SILENT",
+                    "severity": "HIGH",
+                    "detail": f"No fires in last {SILENT_WINDOW_HOURS} hours",
+                })
+        except Exception as e:
+            logger.warning("Silent check failed for %s: %s", rule.splunk_search_name, e)
 
-    # Check 2: Is the data source still fresh?
-    if rule.sourcetype and rule.index_name:
+    # Check 2: Is the data source still fresh? (real-time — needs live data)
+    if settings.drift_freshness_check_enabled and rule.sourcetype and rule.index_name:
         try:
             freshness = mcp.run_query(
                 f"| metadata type=sourcetypes index={rule.index_name} "
@@ -58,16 +62,21 @@ def check_rule_health(rule: Rule, mcp: SplunkMCPClient, db: Session) -> list[dic
         except Exception as e:
             logger.warning("Freshness check failed for %s: %s", rule.splunk_search_name, e)
 
-    # Check 3: Do required fields still exist?
+    # Check 3: Do required fields still exist? (schema-drift detection)
+    # Check against ALL available data, not just the last hour — a field that
+    # exists nowhere in the index is genuinely gone/renamed. This is also what
+    # lets the check work on static/historical datasets (e.g. BOTS v3).
     if rule.required_fields and rule.index_name and rule.sourcetype:
         for field in rule.required_fields[:5]:  # check up to 5 fields
             try:
                 field_check = mcp.run_query(
-                    f"index={rule.index_name} sourcetype=\"{rule.sourcetype}\" {field}=* | head 1 | stats count",
-                    earliest="-1h",
+                    f"index={rule.index_name} sourcetype=\"{rule.sourcetype}\" {field}=* | stats count",
+                    earliest="0",
                 )
-                exists = field_check.count > 0 or (int(field_check.results[0].get("count", 0)) > 0 if field_check.results else False)
-                if not exists:
+                # `| stats count` always returns exactly one row, so the row
+                # count is meaningless — read the actual count VALUE.
+                cnt = int(field_check.results[0].get("count", 0)) if field_check.results else 0
+                if cnt == 0:
                     issues.append({
                         "type": "SCHEMA_DRIFT",
                         "severity": "HIGH",
@@ -79,37 +88,97 @@ def check_rule_health(rule: Rule, mcp: SplunkMCPClient, db: Session) -> list[dic
     return issues
 
 
+def regenerate_broken_rule(rule: Rule, mcp: SplunkMCPClient, db: Session, drift_detail: str) -> bool:
+    """Self-heal a broken detection: regenerate SPL against the current schema,
+    re-validate, and redeploy. Returns True if the rule was healed.
+
+    This closes the loop — drift no longer just raises an alert, the agent
+    rewrites the detection so coverage is restored automatically.
+    """
+    from core.agent.nodes.spl_generator import run_spl_generator
+    from core.agent.nodes.validator import validate_spl, STATUS_GOOD, STATUS_DATA_ABSENT, STATUS_NOISY
+    from core.agent.nodes.deployer import deploy_rule
+    from core.models.foundation_sec import FoundationSecClient
+    from core.splunk.rest_client import SplunkRestClient
+    from db.models import EnvSnapshot
+
+    snap = db.query(EnvSnapshot).order_by(EnvSnapshot.captured_at.desc()).first()
+    env = snap.fingerprint if snap else {}
+    gap = {
+        "technique_id": rule.technique_id,
+        "technique_name": rule.technique_name,
+        "tactic": rule.tactic,
+        "description": "",
+        "detection": "",
+    }
+    feedback = (
+        f"The previously deployed detection broke due to drift: {drift_detail}. "
+        "Regenerate it using only fields and EventCodes that currently exist in the data."
+    )
+    res = run_spl_generator(gap, env, mcp, FoundationSecClient(), validation_feedback=feedback)
+    new_spl = res.get("spl")
+    if not new_spl:
+        return False
+
+    validation = validate_spl(new_spl, rule.index_name or "main", rule.sourcetype or "*", mcp)
+    if validation["status"] not in (STATUS_GOOD, STATUS_DATA_ABSENT, STATUS_NOISY):
+        return False
+
+    rule.spl = new_spl
+    rule.confidence_score = res["confidence"]
+    rule.hits_per_day = validation["hits_per_day"]
+    rule.false_pos_estimate = validation.get("false_pos_estimate")
+    rule.status = "DEPLOYED"
+    db.commit()
+    deploy_rule(rule, SplunkRestClient(), mcp, db)  # redeploy the healed SPL
+    return True
+
+
 def run_drift_monitor(db: Session, mcp: SplunkMCPClient) -> dict:
     """Run health checks on all deployed rules. Called by APScheduler every 6h."""
+    from core.config import get_settings
+    auto_heal = get_settings().drift_auto_regenerate
+
     deployed_rules = db.query(Rule).filter(Rule.status == "DEPLOYED").all()
     logger.info("[Drift Monitor] Checking %d deployed rules", len(deployed_rules))
 
-    summary = {"healthy": 0, "broken": 0, "rules_checked": len(deployed_rules)}
+    summary = {"healthy": 0, "broken": 0, "regenerated": 0, "rules_checked": len(deployed_rules)}
 
     for rule in deployed_rules:
         issues = check_rule_health(rule, mcp, db)
 
-        if issues:
-            rule.status = "BROKEN"
-            for issue in issues:
-                drift_event = DriftEvent(
-                    rule_id=rule.id,
-                    drift_type=issue["type"],
-                    detail=issue["detail"],
-                )
-                db.add(drift_event)
-            db.commit()
-            summary["broken"] += 1
-            logger.warning(
-                "[Drift Monitor] BROKEN: %s — %s",
-                rule.splunk_search_name,
-                "; ".join(i["detail"] for i in issues),
-            )
-        else:
+        if not issues:
             summary["healthy"] += 1
+            continue
+
+        rule.status = "BROKEN"
+        detail = "; ".join(i["detail"] for i in issues)
+        events = []
+        for issue in issues:
+            ev = DriftEvent(rule_id=rule.id, drift_type=issue["type"], detail=issue["detail"])
+            db.add(ev)
+            events.append(ev)
+        db.commit()
+        summary["broken"] += 1
+        logger.warning("[Drift Monitor] BROKEN: %s — %s", rule.splunk_search_name, detail)
+
+        # Self-heal: regenerate + redeploy a working detection.
+        if auto_heal:
+            try:
+                healed = regenerate_broken_rule(rule, mcp, db, detail)
+            except Exception as e:
+                logger.error("[Drift Monitor] regeneration failed for %s: %s", rule.technique_id, e)
+                healed = False
+            if healed:
+                summary["regenerated"] += 1
+                for ev in events:
+                    ev.resolved_at = datetime.now(timezone.utc)
+                    ev.resolution = "REGENERATED"
+                db.commit()
+                logger.info("[Drift Monitor] SELF-HEALED: %s regenerated + redeployed", rule.technique_id)
 
     logger.info(
-        "[Drift Monitor] Done — %d healthy, %d broken",
-        summary["healthy"], summary["broken"],
+        "[Drift Monitor] Done — %d healthy, %d broken, %d self-healed",
+        summary["healthy"], summary["broken"], summary["regenerated"],
     )
     return summary

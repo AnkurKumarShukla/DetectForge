@@ -1,15 +1,51 @@
 {
-  "title": "DetectForge — Attack Path Visualizer",
+  "title": "DetectForge \u2014 Attack Path Visualizer",
   "description": "Threat actor kill chains and blind spots through your environment",
   "defaultInputs": {},
   "layout": {
-    "type": "absolute",
-    "options": {"display": "auto-scale"},
+    "type": "grid",
+    "options": {},
     "structure": [
-      {"item": "viz_actor_coverage", "type": "block", "position": {"x": 0,    "y": 0,   "w": 720, "h": 350}},
-      {"item": "viz_blind_window",   "type": "block", "position": {"x": 720,  "y": 0,   "w": 720, "h": 350}},
-      {"item": "viz_chain_table",    "type": "block", "position": {"x": 0,    "y": 350, "w": 1440, "h": 500}},
-      {"item": "viz_critical_path",  "type": "block", "position": {"x": 0,    "y": 850, "w": 1440, "h": 300}}
+      {
+        "item": "viz_actor_coverage",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "w": 598,
+          "h": 350
+        }
+      },
+      {
+        "item": "viz_blind_window",
+        "type": "block",
+        "position": {
+          "x": 598,
+          "y": 0,
+          "w": 598,
+          "h": 350
+        }
+      },
+      {
+        "item": "viz_chain_table",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 350,
+          "w": 1195,
+          "h": 500
+        }
+      },
+      {
+        "item": "viz_critical_path",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 850,
+          "w": 1195,
+          "h": 300
+        }
+      }
     ],
     "globalInputs": []
   },
@@ -17,52 +53,101 @@
     "ds_actors": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_actor_chains | stats first(coverage_pct) as coverage_pct, first(longest_blind_window) as blind_steps, first(total_steps) as total_steps by actor | sort coverage_pct",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_actor_chains.csv | stats first(coverage_pct) as coverage_pct, first(longest_blind_window) as blind_steps, first(total_steps) as total_steps by actor | sort coverage_pct",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
     "ds_chain": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_actor_chains | table actor,step,technique_id,technique_name,tactic,status | sort actor,step",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_actor_chains.csv | eval status=case(status==\"COVERED\",\"\ud83d\udfe2 DETECTED\",status==\"GAP\",\"\ud83d\udd34 BLIND SPOT\",status==\"BROKEN\",\"\ud83d\udfe0 BROKEN\",true(),status) | table actor,step,technique_id,technique_name,tactic,status | sort actor,step",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
     "ds_critical": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_actor_chains | where status=\"GAP\" | stats count as gap_steps, values(technique_id) as techniques by actor | sort -gap_steps",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_actor_chains.csv | where status=\"GAP\" | stats count as gap_steps, values(technique_id) as techniques by actor | sort -gap_steps",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_cov": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_actor_chains.csv | stats first(coverage_pct) as coverage_pct by actor | sort coverage_pct",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_blind": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_actor_chains.csv | stats first(longest_blind_window) as blind_steps by actor | sort -blind_steps",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     }
   },
   "visualizations": {
     "viz_actor_coverage": {
       "type": "splunk.bar",
-      "dataSources": {"primary": "ds_actors"},
+      "dataSources": {
+        "primary": "ds_cov"
+      },
       "options": {
         "xField": "actor",
         "yField": "coverage_pct",
-        "seriesColors": ["#e74c3c", "#f39c12", "#2ecc71"],
+        "seriesColors": [
+          "#2ecc71"
+        ],
         "backgroundColor": "#1a1a2e",
         "xAxisLabelRotation": -20
       },
-      "title": "Kill Chain Coverage % by Threat Actor"
+      "title": "Kill Chain Coverage % by Threat Actor (higher = safer)"
     },
     "viz_blind_window": {
       "type": "splunk.bar",
-      "dataSources": {"primary": "ds_actors"},
+      "dataSources": {
+        "primary": "ds_blind"
+      },
       "options": {
         "xField": "actor",
         "yField": "blind_steps",
-        "seriesColors": ["#e74c3c"],
+        "seriesColors": [
+          "#e74c3c"
+        ],
         "backgroundColor": "#1a1a2e"
       },
       "title": "Consecutive Blind Spot Steps per Actor"
     },
     "viz_chain_table": {
       "type": "splunk.table",
-      "dataSources": {"primary": "ds_chain"},
+      "dataSources": {
+        "primary": "ds_chain"
+      },
       "options": {
         "backgroundColor": "#1a1a2e",
         "columnFormatting": {
@@ -71,13 +156,17 @@
           }
         }
       },
-      "title": "Kill Chain Steps — GREEN=Detected / RED=Blind Spot / ORANGE=Broken"
+      "title": "Kill Chain Steps \u2014 GREEN=Detected / RED=Blind Spot / ORANGE=Broken"
     },
     "viz_critical_path": {
       "type": "splunk.table",
-      "dataSources": {"primary": "ds_critical"},
-      "options": {"backgroundColor": "#1a1a2e"},
-      "title": "Critical Paths — Actors with Most Undetected Steps"
+      "dataSources": {
+        "primary": "ds_critical"
+      },
+      "options": {
+        "backgroundColor": "#1a1a2e"
+      },
+      "title": "Critical Paths \u2014 Actors with Most Undetected Steps"
     }
   }
 }

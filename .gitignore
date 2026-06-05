@@ -30,3 +30,6 @@ knowledge/attack/enterprise-attack.json
 data/*.tgz
 data/*.zip
 data/botsv3_extracted/
+
+uvicorn.err
+uvicorn.out

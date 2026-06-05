@@ -64,7 +64,7 @@ def tune_rule(rule: Rule, mcp: SplunkMCPClient, db: Session) -> dict:
         last_validation = validation
 
         logger.info(
-            "[AutoTuner] Round %d/%d: %.1f → %.1f hits/day status=%s",
+            "[AutoTuner] Round %d/%d: %.1f -> %.1f hits/day status=%s",
             round_num, max_rounds, hits_per_day, validation["hits_per_day"], validation["status"],
         )
 

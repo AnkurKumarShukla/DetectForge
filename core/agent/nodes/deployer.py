@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime, timezone
 
+import httpx
 from sqlalchemy.orm import Session
 
 from core.splunk.mcp_client import SplunkMCPClient
@@ -34,6 +35,18 @@ def deploy_rule(rule: Rule, rest: SplunkRestClient, mcp: SplunkMCPClient, db: Se
             severity=_severity_from_tactic(rule.tactic),
             industry=rule.industry,
         )
+    except httpx.HTTPStatusError as e:
+        # Already deployed (same search name) — update it instead of failing.
+        if e.response.status_code == 409:
+            try:
+                rest.update_saved_search(search_name, rule.spl)
+                logger.info("Updated existing saved search: %s", search_name)
+            except Exception as e2:
+                logger.error("Update after 409 failed for %s: %s", rule.technique_id, e2)
+                return False
+        else:
+            logger.error("Deployment failed for %s: %s", rule.technique_id, e)
+            return False
     except Exception as e:
         logger.error("Deployment failed for %s: %s", rule.technique_id, e)
         return False

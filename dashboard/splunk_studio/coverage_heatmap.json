@@ -1,109 +1,238 @@
 {
-  "title": "DetectForge — ATT&CK Coverage Heatmap",
-  "description": "MITRE ATT&CK coverage status by tactic and technique",
+  "title": "DetectForge \u2014 Detection Coverage & Risk",
+  "description": "Threat-actor coverage, gaps by MITRE tactic, and financial exposure",
   "defaultInputs": {},
   "layout": {
-    "type": "absolute",
-    "options": {"display": "auto-scale"},
+    "type": "grid",
+    "options": {},
     "structure": [
-      {"item": "viz_summary",    "type": "block", "position": {"x": 0,    "y": 0,   "w": 500, "h": 150}},
-      {"item": "viz_exposure",   "type": "block", "position": {"x": 500,  "y": 0,   "w": 500, "h": 150}},
-      {"item": "viz_rules",      "type": "block", "position": {"x": 1000, "y": 0,   "w": 440, "h": 150}},
-      {"item": "viz_gaps_table", "type": "block", "position": {"x": 0,    "y": 150, "w": 1440, "h": 500}},
-      {"item": "viz_tactic_bar", "type": "block", "position": {"x": 0,    "y": 650, "w": 1440, "h": 350}}
+      {
+        "item": "viz_threat",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "w": 290,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_active",
+        "type": "block",
+        "position": {
+          "x": 300,
+          "y": 0,
+          "w": 290,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_gaps_open",
+        "type": "block",
+        "position": {
+          "x": 600,
+          "y": 0,
+          "w": 290,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_exposure",
+        "type": "block",
+        "position": {
+          "x": 900,
+          "y": 0,
+          "w": 295,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_tactic_cov",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 170,
+          "w": 1195,
+          "h": 330
+        }
+      },
+      {
+        "item": "viz_gaps_table",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 520,
+          "w": 1195,
+          "h": 430
+        }
+      }
     ],
     "globalInputs": []
   },
   "dataSources": {
-    "ds_gaps": {
+    "ds_threat": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | eval exposure_m=round(financial_exposure_usd/1000000,2) | sort -financial_exposure_usd | table technique_id,technique_name,tactic,status,exposure_m,priority_score",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_actor_chains.csv | stats first(coverage_pct) as c by actor | stats avg(c) as threat_coverage | eval threat_coverage=round(threat_coverage,0)",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
-    "ds_coverage": {
+    "ds_active": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_coverage | tail 1",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_rules.csv | stats count(eval(status=\"DEPLOYED\")) as active",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
-    "ds_rules": {
+    "ds_gapcount": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_rules | stats count as total, count(eval(status=\"DEPLOYED\")) as deployed, count(eval(status=\"BROKEN\")) as broken by industry",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_gaps.csv | where status!=\"CLOSED\" | stats count as open_gaps",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_exposure": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps.csv | where status!=\"CLOSED\" | stats sum(financial_exposure_usd) as financial_exposure_usd",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
     "ds_tactic": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_gaps | where status!=\"CLOSED\" | stats sum(financial_exposure_usd) as total_exposure, count as gap_count by tactic | sort -total_exposure | eval exposure_m=round(total_exposure/1000000,2)",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_tactic_coverage.csv | sort coverage_pct | table tactic coverage_pct",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_gaps": {
+      "type": "ds.search",
+      "options": {
+        "query": "| inputlookup detectforge_gaps.csv | where status!=\"CLOSED\" | eval exposure=\"$\".tostring(round(financial_exposure_usd,0),\"commas\") | sort -financial_exposure_usd | head 12 | table technique_id,technique_name,tactic,exposure",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     }
   },
   "visualizations": {
-    "viz_summary": {
+    "viz_threat": {
       "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_coverage"},
-      "options": {
-        "majorField": "coverage_pct",
-        "majorColor": "#2ecc71",
-        "unit": "%",
-        "backgroundColor": "#1a1a2e"
+      "dataSources": {
+        "primary": "ds_threat"
       },
-      "title": "ATT&CK Coverage"
+      "options": {
+        "majorField": "threat_coverage",
+        "majorColor": "#2ecc71",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0",
+        "unit": "%"
+      },
+      "title": "Threat-Actor Coverage"
+    },
+    "viz_active": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_active"
+      },
+      "options": {
+        "majorField": "active",
+        "majorColor": "#3498db",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
+      "title": "Active Detections"
+    },
+    "viz_gaps_open": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_gapcount"
+      },
+      "options": {
+        "majorField": "open_gaps",
+        "majorColor": "#f39c12",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
+      "title": "Open Gaps"
     },
     "viz_exposure": {
       "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_coverage"},
+      "dataSources": {
+        "primary": "ds_exposure"
+      },
       "options": {
         "majorField": "financial_exposure_usd",
         "majorColor": "#e74c3c",
-        "unitPosition": "before",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0",
         "unit": "$",
-        "backgroundColor": "#1a1a2e"
+        "unitPosition": "before"
       },
-      "title": "Annual Gap Exposure"
+      "title": "Annual Risk Exposure"
     },
-    "viz_rules": {
-      "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_rules"},
-      "options": {
-        "majorField": "deployed",
-        "majorColor": "#3498db",
-        "backgroundColor": "#1a1a2e"
+    "viz_tactic_cov": {
+      "type": "splunk.bar",
+      "dataSources": {
+        "primary": "ds_tactic"
       },
-      "title": "Rules Deployed"
+      "options": {
+        "xField": "tactic",
+        "yField": "coverage_pct",
+        "seriesColors": [
+          "#2ecc71"
+        ],
+        "backgroundColor": "#1a1a2e",
+        "xAxisLabelRotation": -30,
+        "yAxisTitleText": "Coverage %"
+      },
+      "title": "Coverage by MITRE Tactic (which kill-chain phases are weak)"
     },
     "viz_gaps_table": {
       "type": "splunk.table",
-      "dataSources": {"primary": "ds_gaps"},
-      "options": {
-        "backgroundColor": "#1a1a2e",
-        "headerBackgroundColor": "#16213e",
-        "rowBackgroundColorOdd": "#0f3460",
-        "columnFormatting": {
-          "status": {
-            "data": "> table | seriesByName(\"status\") | formatByValue(matchMode=\"regex\") | case(\"GAP\", {\"background\":\"#e74c3c\"}), case(\"DATA_GAP\", {\"background\":\"#f39c12\"}), case(\"CLOSABLE\", {\"background\":\"#2ecc71\"})"
-          }
-        }
+      "dataSources": {
+        "primary": "ds_gaps"
       },
-      "title": "Top Gaps by Financial Exposure"
-    },
-    "viz_tactic_bar": {
-      "type": "splunk.bar",
-      "dataSources": {"primary": "ds_tactic"},
       "options": {
-        "xField": "tactic",
-        "yField": "exposure_m",
-        "seriesColors": ["#e74c3c"],
-        "backgroundColor": "#1a1a2e",
-        "xAxisLabelRotation": -45
+        "backgroundColor": "#1a1a2e"
       },
-      "title": "Financial Exposure by Tactic ($M)"
+      "title": "Top Undetected Gaps by Annual $ Risk"
     }
   }
 }

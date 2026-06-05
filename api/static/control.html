@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DetectForge — HITL Control</title>
+<style>
+  :root {
+    --bg:#0f0f1e; --panel:#1a1a2e; --panel2:#16213e; --accent:#0f3460;
+    --green:#2ecc71; --red:#e74c3c; --amber:#f39c12; --blue:#3498db;
+    --text:#e8e8f0; --muted:#8a8aa0;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  header {
+    display:flex; align-items:center; gap:24px; padding:16px 28px;
+    background:linear-gradient(90deg,#16213e,#0f3460); border-bottom:2px solid #2ecc71;
+  }
+  header h1 { font-size:22px; font-weight:700; letter-spacing:.5px; }
+  header h1 .spark { color:var(--green); }
+  .stat { margin-left:auto; text-align:center; }
+  .stat .num { font-size:28px; font-weight:700; color:var(--green); line-height:1; }
+  .stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .controls { display:flex; gap:10px; align-items:center; }
+  button {
+    background:var(--accent); color:#fff; border:none; padding:10px 16px; border-radius:6px;
+    font-size:13px; font-weight:600; cursor:pointer; transition:.15s; }
+  button:hover { filter:brightness(1.25); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.scan { background:var(--blue); }
+  button.drift { background:var(--amber); color:#000; }
+  button.approve { background:var(--green); color:#000; }
+  button.reject { background:var(--red); }
+  select { background:var(--panel2); color:var(--text); border:1px solid var(--accent); padding:9px; border-radius:6px; }
+  .wrap { display:grid; grid-template-columns:1fr 360px; gap:20px; padding:24px 28px; }
+  .section-title { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .badge { background:var(--red); color:#fff; border-radius:10px; padding:1px 9px; font-size:12px; font-weight:700; }
+  .empty { color:var(--muted); padding:40px; text-align:center; border:1px dashed var(--accent); border-radius:8px; }
+  .card {
+    background:var(--panel); border:1px solid var(--accent); border-left:4px solid var(--amber);
+    border-radius:8px; padding:16px 18px; margin-bottom:16px; animation:slidein .35s ease; }
+  .card.mandatory { border-left-color:var(--red); }
+  @keyframes slidein { from{opacity:0;transform:translateY(-12px);} to{opacity:1;transform:none;} }
+  @keyframes fadeout { to{opacity:0;transform:translateX(40px);height:0;padding:0;margin:0;border:0;} }
+  .card.removing { animation:fadeout .4s forwards; overflow:hidden; }
+  .card .top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .card .tid { font-size:16px; font-weight:700; color:var(--blue); }
+  .card .tname { font-size:15px; }
+  .card .tac { font-size:11px; color:var(--muted); background:var(--accent); padding:2px 8px; border-radius:4px; }
+  .card .meta { display:flex; gap:18px; font-size:12px; color:var(--muted); margin-bottom:10px; flex-wrap:wrap; }
+  .card .meta b { color:var(--text); }
+  .conf-high { color:var(--green)!important; } .conf-low { color:var(--amber)!important; }
+  pre { background:#0a0a14; border:1px solid var(--accent); border-radius:6px; padding:12px;
+    font-size:12px; color:#9fe6c0; overflow-x:auto; white-space:pre-wrap; word-break:break-word; margin-bottom:12px; }
+  .card .actions { display:flex; gap:10px; }
+  .feed { background:var(--panel); border:1px solid var(--accent); border-radius:8px; padding:14px; height:fit-content; position:sticky; top:24px; }
+  .logline { font-size:12px; padding:7px 0; border-bottom:1px solid #ffffff10; color:var(--muted); }
+  .logline .t { color:#5a5a78; margin-right:6px; }
+  .logline.ok { color:var(--green); } .logline.warn { color:var(--amber); } .logline.err { color:var(--red); }
+  #toasts { position:fixed; top:18px; right:18px; z-index:100; display:flex; flex-direction:column; gap:10px; }
+  .toast { background:var(--panel2); border-left:4px solid var(--green); padding:14px 18px; border-radius:6px;
+    box-shadow:0 6px 24px #000a; min-width:280px; animation:slidein .3s; font-size:13px; }
+  .toast.warn { border-left-color:var(--amber); } .toast.err { border-left-color:var(--red); }
+  .toast .th { font-weight:700; margin-bottom:3px; }
+  a.dash { color:var(--blue); font-size:12px; text-decoration:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="spark">&#9889;</span> DetectForge <span style="color:var(--muted);font-weight:400;font-size:14px;">— Human-in-the-Loop Control</span></h1>
+  <div class="controls">
+    <select id="industry">
+      <option value="healthcare">Healthcare</option>
+      <option value="finance">Finance</option>
+      <option value="energy">Energy</option>
+      <option value="technology">Technology</option>
+    </select>
+    <button class="scan" id="scanBtn" onclick="runScan()">&#9658; Run Agent Scan</button>
+    <button class="drift" onclick="triggerDrift()">&#9888; Trigger Drift Monitor</button>
+  </div>
+  <div class="stat">
+    <div class="num" id="covNum">—</div>
+    <div class="lbl">ATT&CK Coverage</div>
+  </div>
+  <div class="stat">
+    <div class="num" id="depNum" style="color:var(--blue)">—</div>
+    <div class="lbl">Rules Deployed</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="section-title">
+      Pending Detections — Awaiting Your Approval
+      <span class="badge" id="qcount">0</span>
+    </div>
+    <div id="queue"><div class="empty">No detections pending. Click <b>Run Agent Scan</b> to let the agent find gaps and generate SPL.</div></div>
+  </div>
+  <div>
+    <div class="section-title">Live Activity</div>
+    <div class="feed" id="feed"></div>
+    <p style="margin-top:14px"><a class="dash" href="http://localhost:8000/en-US/app/search/detectforge_attack_paths" target="_blank">&#8599; Open Splunk Attack-Path dashboard</a></p>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const API = '/api/v1';
+let known = new Set();
+let firstLoad = true;
+
+function log(msg, cls='') {
+  const f = document.getElementById('feed');
+  const t = new Date().toLocaleTimeString();
+  const d = document.createElement('div');
+  d.className = 'logline ' + cls;
+  d.innerHTML = `<span class="t">${t}</span>${msg}`;
+  f.prepend(d);
+  while (f.children.length > 40) f.removeChild(f.lastChild);
+}
+
+function toast(title, body, cls='') {
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast ' + cls;
+  el.innerHTML = `<div class="th">${title}</div><div>${body}</div>`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+  if (cls !== 'err' && 'Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
+async function refreshStats() {
+  try {
+    const cov = await (await fetch(`${API}/coverage`)).json();
+    if (cov && cov.coverage_pct != null) document.getElementById('covNum').textContent = cov.coverage_pct + '%';
+    if (cov && cov.rules_deployed != null) document.getElementById('depNum').textContent = cov.rules_deployed;
+  } catch(e){}
+}
+
+function card(item) {
+  const conf = Math.round((item.confidence_score||0)*100);
+  const confCls = conf >= 75 ? 'conf-high' : 'conf-low';
+  const hits = item.hits_per_day != null ? Number(item.hits_per_day).toFixed(1) : '—';
+  return `<div class="card ${item.mandatory?'mandatory':''}" id="q_${item.queue_id}">
+    <div class="top">
+      <span class="tid">${item.technique_id}</span>
+      <span class="tname">${item.technique_name||''}</span>
+      <span class="tac">${item.tactic||''}</span>
+      ${item.mandatory?'<span class="badge">MANDATORY REVIEW</span>':''}
+    </div>
+    <div class="meta">
+      <span>Confidence: <b class="${confCls}">${conf}%</b></span>
+      <span>Est. hits/day: <b>${hits}</b></span>
+      <span>False-positive risk: <b>${item.false_pos_estimate||'—'}</b></span>
+      <span>Gen attempts: <b>${item.generation_attempts||1}</b></span>
+    </div>
+    <pre>${(item.spl||'').replace(/</g,'&lt;')}</pre>
+    <div class="actions">
+      <button class="approve" onclick="approve('${item.queue_id}','${item.technique_id}')">&#10003; Approve &amp; Deploy</button>
+      <button class="reject" onclick="reject('${item.queue_id}','${item.technique_id}')">&#10007; Reject</button>
+    </div>
+  </div>`;
+}
+
+async function refreshQueue() {
+  let items;
+  try { items = await (await fetch(`${API}/review/queue`)).json(); }
+  catch(e){ return; }
+  const q = document.getElementById('queue');
+  document.getElementById('qcount').textContent = items.length;
+
+  if (!items.length) {
+    if (!document.querySelector('#queue .empty'))
+      q.innerHTML = '<div class="empty">All clear — no detections awaiting review.</div>';
+  } else {
+    // detect NEW items -> push notification
+    const ids = new Set(items.map(i=>i.queue_id));
+    if (!firstLoad) {
+      items.forEach(i => {
+        if (!known.has(i.queue_id)) {
+          toast('&#128276; New detection generated', `${i.technique_id} — ${i.technique_name}. Review &amp; approve.`, 'warn');
+          log(`Agent generated SPL for <b>${i.technique_id}</b> — queued for review`, 'warn');
+        }
+      });
+    }
+    q.innerHTML = items.map(card).join('');
+  }
+  known = new Set(items.map(i=>i.queue_id));
+  firstLoad = false;
+}
+
+async function approve(qid, tid) {
+  const el = document.getElementById('q_'+qid);
+  el.querySelectorAll('button').forEach(b=>b.disabled=true);
+  try {
+    const r = await fetch(`${API}/review/${qid}/approve`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({reviewer:'analyst'})
+    });
+    if (!r.ok) throw new Error((await r.json()).detail||'failed');
+    el.classList.add('removing');
+    setTimeout(()=>refreshQueue(), 450);
+    toast('&#9989; Deployed to Splunk', `${tid} is now live as a saved search.`);
+    log(`<b>${tid}</b> approved &rarr; deployed to Splunk`, 'ok');
+    refreshStats();
+  } catch(e) {
+    el.querySelectorAll('button').forEach(b=>b.disabled=false);
+    toast('&#10060; Deploy failed', String(e.message||e), 'err');
+    log(`Deploy of ${tid} failed: ${e.message||e}`, 'err');
+  }
+}
+
+async function reject(qid, tid) {
+  const reason = prompt(`Reject ${tid} — reason (optional):`, '');
+  if (reason === null) return;
+  const el = document.getElementById('q_'+qid);
+  el.querySelectorAll('button').forEach(b=>b.disabled=true);
+  try {
+    const r = await fetch(`${API}/review/${qid}/reject`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({reviewer:'analyst', reason})
+    });
+    if (!r.ok) throw new Error((await r.json()).detail||'failed');
+    el.classList.add('removing');
+    setTimeout(()=>refreshQueue(), 450);
+    log(`<b>${tid}</b> rejected by analyst`, 'warn');
+  } catch(e) {
+    el.querySelectorAll('button').forEach(b=>b.disabled=false);
+    toast('Reject failed', String(e.message||e), 'err');
+  }
+}
+
+async function runScan() {
+  const btn = document.getElementById('scanBtn');
+  const industry = document.getElementById('industry').value;
+  btn.disabled = true; btn.textContent = 'Scanning…';
+  log(`Agent scan started (${industry}) — fingerprinting Splunk, mapping ATT&CK gaps…`);
+  try {
+    const r = await (await fetch(`${API}/scan`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({industry, max_gaps:20})
+    })).json();
+    pollScan(r.scan_id);
+  } catch(e) {
+    btn.disabled=false; btn.textContent='▶ Run Agent Scan';
+    toast('Scan failed to start', String(e), 'err');
+  }
+}
+
+async function pollScan(sid) {
+  const btn = document.getElementById('scanBtn');
+  try {
+    const s = await (await fetch(`${API}/scan/${sid}/status`)).json();
+    if (s.status === 'complete') {
+      btn.disabled=false; btn.textContent='▶ Run Agent Scan';
+      toast('&#9989; Scan complete', `${s.rules_generated||0} rules generated, ${s.rules_queued_for_review||0} queued for review.`);
+      log(`Scan complete — ${s.rules_generated||0} SPL rules generated, coverage now ${s.coverage_after_pct||0}%`, 'ok');
+      refreshQueue(); refreshStats();
+    } else if (s.status === 'error') {
+      btn.disabled=false; btn.textContent='▶ Run Agent Scan';
+      toast('Scan error', s.error||'unknown', 'err');
+      log(`Scan failed: ${s.error||''}`, 'err');
+    } else {
+      setTimeout(()=>pollScan(sid), 2500);
+    }
+  } catch(e) { setTimeout(()=>pollScan(sid), 2500); }
+}
+
+async function triggerDrift() {
+  log('Drift monitor triggered — checking deployed rules for schema drift…', 'warn');
+  try {
+    const r = await (await fetch(`${API}/drift-monitor/trigger`, {method:'POST'})).json();
+    const broken = r.broken ?? 0, healed = r.regenerated ?? 0;
+    if (broken) {
+      toast('&#9888; Drift detected', `${broken} rule(s) broke; agent self-healed ${healed}. See Rule Health dashboard.`, healed?'':'warn');
+      log(`Drift: ${broken} broke -> agent regenerated + redeployed ${healed} (self-healed)`, healed?'ok':'warn');
+    } else {
+      toast('&#9989; Drift check done', 'All deployed rules healthy.', '');
+      log('Drift monitor: all rules healthy', 'ok');
+    }
+    refreshStats();
+  } catch(e) { toast('Drift trigger failed', String(e), 'err'); }
+}
+
+// boot
+if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+log('DetectForge control panel ready.');
+refreshQueue(); refreshStats();
+setInterval(refreshQueue, 3000);
+setInterval(refreshStats, 6000);
+</script>
+</body>
+</html>

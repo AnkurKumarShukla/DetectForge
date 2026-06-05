@@ -13,6 +13,7 @@ dependencies = [
     "langgraph>=1.2.2",
     "networkx>=3.6.1",
     "openai>=2.38.0",
+    "playwright>=1.60.0",
     "pydantic-settings>=2.14.1",
     "python-dotenv>=1.2.2",
     "splunk-sdk>=3.0.0",

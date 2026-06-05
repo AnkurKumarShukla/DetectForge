@@ -44,6 +44,12 @@ def approve(queue_id: str, body: ApproveRequest, db: Annotated[Session, Depends(
     success = approve_rule(queue_id, body.reviewer, db, mcp, rest)
     if not success:
         raise HTTPException(status_code=400, detail="Approval failed or entry not found")
+    # Refresh dashboards so the attack-path node turns RED->GREEN live in Splunk
+    try:
+        from dashboard.setup_dashboards import refresh_dashboards
+        refresh_dashboards(db)
+    except Exception:
+        pass
     return {"status": "approved", "queue_id": queue_id}
 
 

@@ -24,13 +24,17 @@ class SplunkRestClient:
         self._timeout = 60.0
 
     def _auth(self):
-        if self._token:
-            return None  # use bearer token header
-        return (self._username, self._password)
+        # Prefer HTTP Basic (username/password) — works reliably against the
+        # management port. Fall back to bearer token only when no password is set.
+        if self._password:
+            return (self._username, self._password)
+        return None
 
-    def _headers(self) -> dict:
-        h = {"Content-Type": "application/x-www-form-urlencoded"}
-        if self._token:
+    def _headers(self, content_type: str | None = None) -> dict:
+        h: dict[str, str] = {}
+        if content_type:
+            h["Content-Type"] = content_type
+        if self._token and not self._password:
             h["Authorization"] = f"Bearer {self._token}"
         return h
 
@@ -38,7 +42,7 @@ class SplunkRestClient:
         url = f"{self._base_url}{path}"
         params = {**(params or {}), "output_mode": "json"}
         with httpx.Client(verify=self._verify_ssl, timeout=self._timeout) as client:
-            resp = client.get(url, params=params, auth=self._auth(), headers={"Authorization": f"Bearer {self._token}"} if self._token else {})
+            resp = client.get(url, params=params, auth=self._auth(), headers=self._headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -46,14 +50,16 @@ class SplunkRestClient:
         url = f"{self._base_url}{path}"
         data["output_mode"] = "json"
         with httpx.Client(verify=self._verify_ssl, timeout=self._timeout) as client:
-            resp = client.post(url, data=data, auth=self._auth(), headers=self._headers() if not self._token else {"Authorization": f"Bearer {self._token}", "Content-Type": "application/x-www-form-urlencoded"})
+            resp = client.post(url, data=data, auth=self._auth(),
+                               headers=self._headers("application/x-www-form-urlencoded"))
         resp.raise_for_status()
         return resp.json()
 
     def _delete(self, path: str) -> dict:
         url = f"{self._base_url}{path}"
         with httpx.Client(verify=self._verify_ssl, timeout=self._timeout) as client:
-            resp = client.delete(url, auth=self._auth(), params={"output_mode": "json"})
+            resp = client.delete(url, auth=self._auth(), params={"output_mode": "json"},
+                                 headers=self._headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -67,28 +73,37 @@ class SplunkRestClient:
         severity: str = "medium",
         industry: str = "",
         app: str = SPLUNK_SEARCH_APP,
+        base_tag: str = "detectforge",
     ) -> dict:
-        """Deploy a detection rule as a saved search with DetectForge metadata tags."""
-        tags = ["detectforge"]
+        """Deploy a detection rule as a saved search.
+
+        Splunk's saved/searches REST handler rejects a `tags` argument, so MITRE
+        metadata (technique, tactic, severity, industry, source tag) is encoded
+        into the description instead — visible in the UI and preserved on the
+        object. DetectForge's own state (coverage, drift) lives in its DB.
+        """
+        labels = [base_tag]
         if technique_id:
-            tags.append(f"mitre_{technique_id.lower().replace('.', '_')}")
+            labels.append(f"mitre_{technique_id.lower().replace('.', '_')}")
         if tactic:
-            tags.append(f"tactic_{tactic.lower().replace(' ', '_')}")
-        tags.append(f"severity_{severity}")
+            labels.append(f"tactic_{tactic.lower().replace(' ', '_')}")
+        labels.append(f"severity_{severity}")
         if industry:
-            tags.append(f"industry_{industry}")
+            labels.append(f"industry_{industry}")
+
+        full_description = description
+        meta_line = f"[{' '.join(labels)}]"
+        full_description = f"{description}\n{meta_line}".strip() if description else meta_line
 
         data = {
             "name": name,
             "search": spl,
-            "description": description,
+            "description": full_description,
             "is_scheduled": "1",
             "cron_schedule": "*/15 * * * *",
             "alert_type": "number of events",
             "alert_comparator": "greater than",
             "alert_threshold": "0",
-            "actions": "",
-            "tags": ",".join(tags),
             "dispatch.earliest_time": "-15m",
             "dispatch.latest_time": "now",
         }

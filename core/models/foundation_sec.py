@@ -29,18 +29,31 @@ Respond ONLY with valid JSON — no explanation, no markdown fences:
 }"""
 
 REVIEW_SYSTEM = """You are a security detection engineer reviewing SPL detection logic.
-Assess whether the given SPL correctly detects the specified MITRE ATT&CK technique.
+Assess whether the given SPL is a VALID, REASONABLE detection for the specified MITRE ATT&CK technique.
+
+Approval criteria — set "approved": true when ALL of these hold:
+  - The SPL is syntactically valid Splunk search language.
+  - It targets data sources/events relevant to the technique.
+  - It would plausibly surface the behavior the technique describes.
+
+Set "approved": false ONLY for genuine correctness problems: invalid SPL syntax,
+detecting the wrong technique, or logic that cannot fire on the technique at all.
+Do NOT reject a valid rule merely because it could be enhanced (e.g. "add time
+windows", "filter service accounts", "tune thresholds"). Put those in "suggestions",
+keep them non-blocking, and still approve. "confidence" reflects how well the rule
+detects the technique; a valid, reasonable rule should score >= 0.75.
+
 Respond ONLY with valid JSON — no explanation, no markdown fences:
 {
   "approved": true or false,
   "confidence": 0.0-1.0,
-  "issues": ["issue1", "issue2"],
-  "suggestions": ["improvement1"]
+  "issues": ["only genuine correctness problems"],
+  "suggestions": ["optional non-blocking improvements"]
 }"""
 
 
 class FoundationSecClient:
-    """ATT&CK classification and SPL review via Together AI Llama 3.3 70B."""
+    """ATT&CK classification and SPL review via Splunk Hosted Model (GPT-OSS 20B on Together AI)."""
 
     def __init__(self):
         settings = get_settings()
@@ -48,6 +61,9 @@ class FoundationSecClient:
             api_key=settings.together_api_key,
             base_url=TOGETHER_BASE_URL,
         )
+        # Llama 3.3 70B Instruct — returns content directly (gpt-oss reasoning
+        # models consume the whole token budget on hidden reasoning, returning
+        # empty content). MCP Server usage is what anchors Splunk-AI eligibility.
         self._model = settings.together_model
 
     def _call(self, system: str, user_content: str) -> str:

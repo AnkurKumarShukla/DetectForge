@@ -1,17 +1,61 @@
 {
-  "title": "DetectForge — Rule Health & Drift Monitor",
+  "title": "DetectForge \u2014 Rule Health & Drift Monitor",
   "description": "Live status of all deployed detection rules and drift events",
   "defaultInputs": {},
   "layout": {
-    "type": "absolute",
-    "options": {"display": "auto-scale"},
+    "type": "grid",
+    "options": {},
     "structure": [
-      {"item": "viz_healthy",     "type": "block", "position": {"x": 0,    "y": 0,   "w": 360, "h": 150}},
-      {"item": "viz_broken",     "type": "block", "position": {"x": 360,  "y": 0,   "w": 360, "h": 150}},
-      {"item": "viz_drift_count","type": "block", "position": {"x": 720,  "y": 0,   "w": 360, "h": 150}},
-      {"item": "viz_coverage",   "type": "block", "position": {"x": 1080, "y": 0,   "w": 360, "h": 150}},
-      {"item": "viz_rules_table","type": "block", "position": {"x": 0,    "y": 150, "w": 1440,"h": 500}},
-      {"item": "viz_drift_table","type": "block", "position": {"x": 0,    "y": 650, "w": 1440,"h": 350}}
+      {
+        "item": "viz_healthy",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "w": 382,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_broken",
+        "type": "block",
+        "position": {
+          "x": 407,
+          "y": 0,
+          "w": 382,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_drift_count",
+        "type": "block",
+        "position": {
+          "x": 813,
+          "y": 0,
+          "w": 382,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_rules_table",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 170,
+          "w": 1195,
+          "h": 470
+        }
+      },
+      {
+        "item": "viz_drift_table",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 660,
+          "w": 1195,
+          "h": 330
+        }
+      }
     ],
     "globalInputs": []
   },
@@ -19,60 +63,103 @@
     "ds_rules": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_rules | table technique_id,technique_name,tactic,status,hits_per_day,false_pos_estimate,tuning_rounds,deployed_at,splunk_search_name | sort status,technique_id",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_rules.csv | table technique_id,technique_name,tactic,status,hits_per_day,false_pos_estimate,tuning_rounds,deployed_at,splunk_search_name | sort status,technique_id",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
     "ds_summary": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_rules | stats count(eval(status=\"DEPLOYED\")) as healthy, count(eval(status=\"BROKEN\")) as broken, count as total by industry",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_rules.csv | stats count(eval(status=\"DEPLOYED\")) as healthy, count(eval(status=\"BROKEN\")) as broken, count as total by industry",
+        "queryParameters": {
+          "earliest": "-1d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
     "ds_drift": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_drift_events | sort -detected_at | table rule_id,drift_type,detail,detected_at,resolved_at,resolution",
-        "queryParameters": {"earliest": "-7d", "latest": "now"}
+        "query": "| inputlookup detectforge_drift_events.csv | sort -detected_at | table rule_id,drift_type,detail,detected_at,resolved_at,resolution",
+        "queryParameters": {
+          "earliest": "-7d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     },
-    "ds_coverage_now": {
+    "ds_drift_count": {
       "type": "ds.search",
       "options": {
-        "query": "| inputlookup detectforge_coverage | tail 1 | fields coverage_pct",
-        "queryParameters": {"earliest": "-1d", "latest": "now"}
+        "query": "| inputlookup detectforge_drift_events.csv | stats count as event_count",
+        "queryParameters": {
+          "earliest": "-7d",
+          "latest": "now"
+        },
+        "refresh": "20s",
+        "refreshType": "delay"
       }
     }
   },
   "visualizations": {
     "viz_healthy": {
       "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_summary"},
-      "options": {"majorField": "healthy", "majorColor": "#2ecc71", "backgroundColor": "#1a1a2e"},
+      "dataSources": {
+        "primary": "ds_summary"
+      },
+      "options": {
+        "majorField": "healthy",
+        "majorColor": "#2ecc71",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
       "title": "Rules Healthy"
     },
     "viz_broken": {
       "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_summary"},
-      "options": {"majorField": "broken", "majorColor": "#e74c3c", "backgroundColor": "#1a1a2e"},
+      "dataSources": {
+        "primary": "ds_summary"
+      },
+      "options": {
+        "majorField": "broken",
+        "majorColor": "#e74c3c",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
       "title": "Rules Broken"
     },
     "viz_drift_count": {
       "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_drift"},
-      "options": {"majorField": "count", "majorColor": "#f39c12", "backgroundColor": "#1a1a2e"},
+      "dataSources": {
+        "primary": "ds_drift_count"
+      },
+      "options": {
+        "majorField": "event_count",
+        "majorColor": "#f39c12",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
       "title": "Drift Events (7d)"
-    },
-    "viz_coverage": {
-      "type": "splunk.singlevalue",
-      "dataSources": {"primary": "ds_coverage_now"},
-      "options": {"majorField": "coverage_pct", "unit": "%", "majorColor": "#3498db", "backgroundColor": "#1a1a2e"},
-      "title": "Current Coverage"
     },
     "viz_rules_table": {
       "type": "splunk.table",
-      "dataSources": {"primary": "ds_rules"},
+      "dataSources": {
+        "primary": "ds_rules"
+      },
       "options": {
         "backgroundColor": "#1a1a2e",
         "columnFormatting": {
@@ -81,11 +168,13 @@
           }
         }
       },
-      "title": "All Rules — Live Status"
+      "title": "All Rules \u2014 Live Status"
     },
     "viz_drift_table": {
       "type": "splunk.table",
-      "dataSources": {"primary": "ds_drift"},
+      "dataSources": {
+        "primary": "ds_drift"
+      },
       "options": {
         "backgroundColor": "#1a1a2e",
         "columnFormatting": {

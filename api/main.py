@@ -2,13 +2,17 @@
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from api.routers import attack_path, coverage, gaps, genealogy, nl_query, review, rules, scans
 from db.database import init_db
 from scheduler.scheduler import start_scheduler, stop_scheduler
+
+STATIC_DIR = Path(__file__).parent / "static"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,6 +54,12 @@ app.include_router(gaps.router, prefix="/api/v1")
 app.include_router(nl_query.router, prefix="/api/v1")
 app.include_router(attack_path.router, prefix="/api/v1")
 app.include_router(genealogy.router, prefix="/api/v1")
+
+
+@app.get("/")
+def control_panel():
+    """Human-in-the-loop control panel — the live demo surface."""
+    return FileResponse(STATIC_DIR / "control.html")
 
 
 @app.get("/health")

@@ -84,7 +84,13 @@ def run_env_scanner(state: dict, db: Session, mcp: SplunkMCPClient) -> dict:
     try:
         kos = mcp.discover_knowledge_objects()
         fingerprint["existing_rules"] = [
-            {"name": ko.name, "spl": ko.spl, "enabled": ko.enabled, "description": ko.description}
+            {
+                "name": ko.name,
+                "spl": ko.spl,
+                "enabled": ko.enabled,
+                "description": ko.description,
+                "app": ko.metadata.get("app", ""),
+            }
             for ko in kos if ko.spl
         ]
         logger.info("Found %d existing saved searches", len(fingerprint["existing_rules"]))

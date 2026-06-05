@@ -78,16 +78,48 @@ def get_actor_chain(
 
 
 @router.post("/drift-monitor/trigger")
-def trigger_drift_monitor():
+def trigger_drift_monitor(db: Annotated[Session, Depends(get_db)]):
     """Manually trigger the drift monitor — useful for demo."""
     from scheduler.scheduler import trigger_drift_monitor_now
     result = trigger_drift_monitor_now()
+    # Refresh dashboards so BROKEN/self-healed status shows live in Splunk
+    try:
+        from dashboard.setup_dashboards import refresh_dashboards
+        refresh_dashboards(db)
+    except Exception:
+        pass
     return result
 
 
 def _load_coverage_map(db: Session) -> dict:
-    rows = db.query(RuleClassification).filter(RuleClassification.technique_id.isnot(None)).all()
-    return {r.technique_id: {"rule_name": r.search_name, "confidence": r.confidence} for r in rows}
+    # Use only the most recent scan's classifications — otherwise stale rows from
+    # earlier scans accumulate and wrongly mark gaps as covered.
+    latest = (
+        db.query(RuleClassification.scan_id)
+        .order_by(RuleClassification.classified_at.desc())
+        .first()
+    )
+    if not latest:
+        return {}
+    rows = (
+        db.query(RuleClassification)
+        .filter(
+            RuleClassification.scan_id == latest[0],
+            RuleClassification.technique_id.isnot(None),
+        )
+        .all()
+    )
+    coverage = {r.technique_id: {"rule_name": r.search_name, "confidence": r.confidence} for r in rows}
+
+    # Include rules DetectForge has deployed — this is what turns attack-path
+    # nodes from red (gap) to green (covered) after a scan closes the gaps.
+    deployed = db.query(Rule).filter(Rule.status == "DEPLOYED").all()
+    for rule in deployed:
+        coverage[rule.technique_id] = {
+            "rule_name": rule.splunk_search_name or rule.technique_name,
+            "confidence": rule.confidence_score,
+        }
+    return coverage
 
 
 def _load_broken_techniques(db: Session) -> set[str]:
