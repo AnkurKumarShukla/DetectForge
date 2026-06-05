@@ -1,0 +1,198 @@
+{
+  "title": "DetectForge \u2014 Agent Activity (Live)",
+  "description": "Live stream of the autonomous agent's reasoning and actions, indexed in Splunk",
+  "defaultInputs": {},
+  "layout": {
+    "type": "grid",
+    "options": {},
+    "structure": [
+      {
+        "item": "viz_actions",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "w": 390,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_tech",
+        "type": "block",
+        "position": {
+          "x": 400,
+          "y": 0,
+          "w": 390,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_phases",
+        "type": "block",
+        "position": {
+          "x": 800,
+          "y": 0,
+          "w": 395,
+          "h": 150
+        }
+      },
+      {
+        "item": "viz_feed",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 170,
+          "w": 1195,
+          "h": 520
+        }
+      },
+      {
+        "item": "viz_byphase",
+        "type": "block",
+        "position": {
+          "x": 0,
+          "y": 710,
+          "w": 1195,
+          "h": 280
+        }
+      }
+    ],
+    "globalInputs": []
+  },
+  "dataSources": {
+    "ds_feed": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=detectforge sourcetype=detectforge:agent | eval t=strftime(_time,\"%H:%M:%S\") | sort _time | table t, phase, action, technique_id, status, detail | rename t as time",
+        "queryParameters": {
+          "earliest": "-24h",
+          "latest": "now"
+        },
+        "refresh": "10s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_actions": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=detectforge sourcetype=detectforge:agent | stats count as actions",
+        "queryParameters": {
+          "earliest": "-24h",
+          "latest": "now"
+        },
+        "refresh": "10s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_tech": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=detectforge sourcetype=detectforge:agent technique_id=T* | stats dc(technique_id) as techniques",
+        "queryParameters": {
+          "earliest": "-24h",
+          "latest": "now"
+        },
+        "refresh": "10s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_phasecount": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=detectforge sourcetype=detectforge:agent | stats dc(phase) as phases",
+        "queryParameters": {
+          "earliest": "-24h",
+          "latest": "now"
+        },
+        "refresh": "10s",
+        "refreshType": "delay"
+      }
+    },
+    "ds_byphase": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=detectforge sourcetype=detectforge:agent | stats count by phase | sort phase",
+        "queryParameters": {
+          "earliest": "-24h",
+          "latest": "now"
+        },
+        "refresh": "10s",
+        "refreshType": "delay"
+      }
+    }
+  },
+  "visualizations": {
+    "viz_actions": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_actions"
+      },
+      "options": {
+        "majorField": "actions",
+        "majorColor": "#3498db",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
+      "title": "Agent Actions (30m)"
+    },
+    "viz_tech": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_tech"
+      },
+      "options": {
+        "majorField": "techniques",
+        "majorColor": "#2ecc71",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
+      "title": "Techniques Processed"
+    },
+    "viz_phases": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_phasecount"
+      },
+      "options": {
+        "majorField": "phases",
+        "majorColor": "#f39c12",
+        "backgroundColor": "#16213e",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "numberPrecision": "0"
+      },
+      "title": "Pipeline Phases Active"
+    },
+    "viz_feed": {
+      "type": "splunk.table",
+      "dataSources": {
+        "primary": "ds_feed"
+      },
+      "options": {
+        "backgroundColor": "#1a1a2e",
+        "count": 100
+      },
+      "title": "Live Agent Activity \u2014 chronological, newest at bottom"
+    },
+    "viz_byphase": {
+      "type": "splunk.bar",
+      "dataSources": {
+        "primary": "ds_byphase"
+      },
+      "options": {
+        "xField": "phase",
+        "yField": "count",
+        "seriesColors": [
+          "#3498db"
+        ],
+        "backgroundColor": "#1a1a2e",
+        "xAxisLabelRotation": -30
+      },
+      "title": "Actions by Pipeline Phase"
+    }
+  }
+}

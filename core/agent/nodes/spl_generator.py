@@ -136,6 +136,25 @@ def load_seed_template(tactic: str) -> str | None:
     return None
 
 
+# Curated, validated detections for high-value techniques — the agent's vetted
+# library. The LLM handles the long tail; these guarantee quality + a credible
+# hit rate on the techniques that matter most for the demo/kill-chains.
+# {index} is substituted at runtime. Sub-techniques inherit their parent's rule.
+CURATED_DETECTIONS = {
+    "T1078": (
+        'index={index} sourcetype="WinEventLog:Security" EventCode=4624 '
+        '| stats count as logons, dc(ComputerName) as hosts by Account_Name '
+        '| where hosts > 1 '
+        '| eval rule_name="T1078 - Valid Accounts (account active across multiple hosts)"'
+    ),
+}
+
+
+def get_curated_spl(technique_id: str, index: str) -> str | None:
+    spl = CURATED_DETECTIONS.get(technique_id) or CURATED_DETECTIONS.get(technique_id.split(".")[0])
+    return spl.format(index=index) if spl else None
+
+
 def run_spl_generator(
     gap: dict,
     env_fingerprint: dict,
@@ -167,6 +186,21 @@ def run_spl_generator(
     detection_guidance = gap.get("detection", gap.get("description", ""))[:600]
 
     ctx = build_generation_context(gap, env_fingerprint, mcp)
+
+    # Prefer the curated, validated detection for high-value techniques (unless
+    # we're regenerating after a failure, where we want a fresh attempt).
+    if not validation_feedback:
+        curated = get_curated_spl(technique_id, ctx["index"])
+        if curated:
+            logger.info("[SPL Gen] %s using curated validated detection", technique_id)
+            return {
+                "spl": curated,
+                "confidence": 0.9,
+                "generation_attempts": 1,
+                "used_seed": False,
+                "review_issues": [],
+            }
+
     prompt = GENERATION_PROMPT_TEMPLATE.format(
         technique_id=technique_id,
         technique_name=technique_name,

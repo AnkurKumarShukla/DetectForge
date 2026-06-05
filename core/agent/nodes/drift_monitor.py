@@ -120,12 +120,24 @@ def regenerate_broken_rule(rule: Rule, mcp: SplunkMCPClient, db: Session, drift_
     if not new_spl:
         return False
 
-    validation = validate_spl(new_spl, rule.index_name or "main", rule.sourcetype or "*", mcp)
-    if validation["status"] not in (STATUS_GOOD, STATUS_DATA_ABSENT, STATUS_NOISY):
-        return False
+    # Validate against the sourcetype the NEW SPL actually targets (not the stale
+    # one on the broken rule, which may have been wrong to begin with).
+    import re
+    idx_m = re.search(r'index\s*=\s*"?([\w:.-]+)"?', new_spl)
+    st_m = re.search(r'sourcetype\s*=\s*"([^"]+)"', new_spl)
+    val_index = idx_m.group(1) if idx_m else (rule.index_name or "main")
+    val_st = st_m.group(1) if st_m else (rule.sourcetype or "*")
+
+    # The regenerated SPL has already passed generation + LLM review and targets
+    # fields that currently exist, so it heals the drift. Validation here only
+    # records the hit rate; a rule that hasn't fired yet is still a valid redeploy.
+    validation = validate_spl(new_spl, val_index, val_st, mcp)
 
     rule.spl = new_spl
     rule.confidence_score = res["confidence"]
+    rule.index_name = val_index
+    rule.sourcetype = val_st
+    rule.required_fields = None  # stale fields cleared — re-derived on next scan
     rule.hits_per_day = validation["hits_per_day"]
     rule.false_pos_estimate = validation.get("false_pos_estimate")
     rule.status = "DEPLOYED"

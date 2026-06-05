@@ -29,6 +29,7 @@ DASHBOARDS = [
     ("detectforge_attack_paths",      "attack_paths.json"),
     ("detectforge_financial_risk",    "financial_risk.json"),
     ("detectforge_rule_health",       "rule_health.json"),
+    ("detectforge_agent_activity",    "agent_activity.json"),
 ]
 
 # (dataset key, csv lookup the dashboards inputlookup from)
