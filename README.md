@@ -403,6 +403,105 @@ Import the 4 dashboard JSONs from `dashboard/` into Splunk Dashboard Studio:
 
 ---
 
+## Splunk Integration — Source Reference
+
+Every Splunk product touchpoint in the codebase, with direct links to the relevant lines.
+
+> All links are pinned to commit [`e370993`](https://github.com/AnkurKumarShukla/DetectForge/commit/e37099369a2b840f9e9a60db0e4c68d7be1ab874).
+
+---
+
+### Splunk MCP Server (JSON-RPC 2.0)
+
+The entire agent pipeline communicates with Splunk through the MCP Server over JSON-RPC 2.0. All 14 exposed tools are called through a single transport layer.
+
+| What | File | Lines |
+|------|------|-------|
+| JSON-RPC 2.0 `tools/call` transport — every MCP call goes through here | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L56-L83) | L56–83 |
+| `tools/list` — enumerate all available MCP tools on startup | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L88-L97) | L88–97 |
+| `splunk_run_query` — execute SPL and return structured results | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L101-L125) | L101–125 |
+| `splunk_get_indexes` — index metadata for environment fingerprinting | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L127-L138) | L127–138 |
+| `splunk_get_knowledge_objects` — discover all saved searches (`row_limit=1000`) | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L144-L163) | L144–163 |
+| `saia_generate_spl` / `saia_optimize_spl` / `saia_explain_spl` / `saia_ask_splunk_question` wrappers — Splunk AI Assistant hosted-model tools (currently routing to Llama-3.3-70B via Together AI pending `saia_*` config) | [`core/splunk/mcp_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/mcp_client.py#L164-L192) | L164–192 |
+
+---
+
+### Splunk REST API (`:8089`)
+
+Used for deploying approved detection rules as saved searches and managing dashboard views.
+
+| What | Endpoint | File | Lines |
+|------|----------|------|-------|
+| Create saved search — deploys a new detection rule | `POST /servicesNS/nobody/{app}/saved/searches` | [`core/splunk/rest_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/rest_client.py#L66-L112) | L66–112 |
+| Update saved search — idempotent redeploy on 409 Conflict | `POST /servicesNS/nobody/{app}/saved/searches/{name}` | [`core/splunk/rest_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/rest_client.py#L114-L122) | L114–122 |
+| Delete saved search | `DELETE /servicesNS/nobody/{app}/saved/searches/{name}` | [`core/splunk/rest_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/rest_client.py#L119-L132) | L119–132 |
+| List / get saved searches | `GET /servicesNS/nobody/{app}/saved/searches` | [`core/splunk/rest_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/rest_client.py#L134-L144) | L134–144 |
+| Connectivity health check | `GET /services/server/info` | [`core/splunk/rest_client.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/rest_client.py#L139-L144) | L139–144 |
+| Install dashboards via Dashboard Studio REST | `POST /servicesNS/nobody/{app}/data/ui/views` | [`dashboard/setup_dashboards.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/dashboard/setup_dashboards.py#L53-L85) | L53–85 |
+| Run inline search job to materialise CSV lookups | `POST /servicesNS/nobody/{app}/search/jobs` | [`dashboard/setup_dashboards.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/dashboard/setup_dashboards.py#L100-L140) | L100–140 |
+| Set lookup table ACL to global (required for Dashboard Studio) | `POST /servicesNS/nobody/{app}/data/lookup-table-files/{name}/acl` | [`dashboard/setup_dashboards.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/dashboard/setup_dashboards.py#L143-L149) | L143–149 |
+
+---
+
+### Splunk HEC — Agent Activity Logger
+
+Every agent action (scan start, SPL generated, rule queued, drift detected, etc.) is streamed to a `detectforge_activity` index via HEC. This powers the live "Agentic Ops" view inside Splunk.
+
+| What | File | Lines |
+|------|------|-------|
+| `AgentActivityLogger` class — fire-and-forget, fail-safe HEC emitter | [`core/splunk/agent_logger.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/agent_logger.py#L25-L99) | L25–99 |
+| `/services/collector/event` endpoint wired on init | [`core/splunk/agent_logger.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/splunk/agent_logger.py#L31) | L31 |
+
+---
+
+### SPL (Search Processing Language)
+
+SPL is used in four distinct ways: generation, validation, environment fingerprinting, and drift detection.
+
+| What | File | Lines |
+|------|------|-------|
+| SPL generation prompt — enforces 1 sourcetype, 1 EventCode, no rare literals, no agg funcs in `where` | [`core/agent/nodes/spl_generator.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/spl_generator.py#L14-L32) | L14–32 |
+| `_pick_primary_sourcetype()` — maps ATT&CK tactic → most relevant Splunk sourcetype | [`core/agent/nodes/spl_generator.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/spl_generator.py#L91-L110) | L91–110 |
+| `_top_eventcodes()` — live SPL query: `top limit=12 EventCode` from real BOTS v3 data (prevents hallucinated EventCodes) | [`core/agent/nodes/spl_generator.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/spl_generator.py#L113-L128) | L113–128 |
+| `validate_spl()` — runs generated SPL against live data, classifies `GOOD` / `DATA_ABSENT` / `QUERY_ERROR` / `NOISY` / `VERY_NOISY` | [`core/agent/nodes/validator.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/validator.py#L10-L85) | L10–85 |
+| `makeresults format=csv data=... \| outputlookup` — CSV lookup bridge for Dashboard Studio (workaround for KV Store `inputlookup` returning 0 rows on single-instance Splunk) | [`dashboard/setup_dashboards.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/dashboard/setup_dashboards.py#L101-L130) | L101–130 |
+| `SCHEMA_DRIFT` field-existence check — `{field}=* \| stats count` with `earliest=0`, reads `results[0]['count']` value (not the stats object) | [`core/agent/nodes/drift_monitor.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/drift_monitor.py#L68-L95) | L68–95 |
+
+---
+
+### Deployer — Rule Deployment to Splunk
+
+| What | File | Lines |
+|------|------|-------|
+| `deploy_rule()` — calls `saia_explain_spl`, then `create_saved_search` (or `update_saved_search` on 409); marks rule `DEPLOYED` and updates attack-path coverage | [`core/agent/nodes/deployer.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/deployer.py#L17-L55) | L17–55 |
+
+---
+
+### Env Scanner — Splunk Environment Fingerprinting
+
+| What | File | Lines |
+|------|------|-------|
+| `run_env_scanner()` — calls `get_indexes()` + `discover_knowledge_objects()`, queries `fieldsummary` per security-relevant sourcetype, persists `EnvSnapshot` | [`core/agent/nodes/env_scanner.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/env_scanner.py#L30-L95) | L30–95 |
+
+---
+
+### Drift Monitor — APScheduler + Splunk
+
+| What | File | Lines |
+|------|------|-------|
+| `run_drift_monitor()` — runs on every deployed rule every 6 h; marks rules `BROKEN` on `SCHEMA_DRIFT` | [`core/agent/nodes/drift_monitor.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/agent/nodes/drift_monitor.py#L149-L200) | L149+ |
+| APScheduler wiring — drift monitor every 6 h, CISA KEV sync daily | [`scheduler/scheduler.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/scheduler/scheduler.py) | full file |
+
+---
+
+### Threat Actor Kill-Chain Mapping
+
+| What | File | Lines |
+|------|------|-------|
+| `THREAT_ACTOR_CHAINS` — healthcare / finance / energy / technology actor chains (ALPHV, FIN7, Vice Society, Lazarus, etc.) | [`core/intelligence/kill_chain_mapper.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/intelligence/kill_chain_mapper.py#L4-L25) | L4–25 |
+| `score_actor_chain()` — computes coverage %, blind-window, and minimum fix technique for a given actor | [`core/intelligence/kill_chain_mapper.py`](https://github.com/AnkurKumarShukla/DetectForge/blob/e37099369a2b840f9e9a60db0e4c68d7be1ab874/core/intelligence/kill_chain_mapper.py#L64-L132) | L64–132 |
+
+---
 
 ## License
 
