@@ -1,20 +1,27 @@
 services:
   detectforge:
-    build: .
+    image: shuklaankur/detectforge:latest   # pre-built image from Docker Hub
+    build:                                   # fallback: rebuild locally
+      context: .
+      dockerfile: Dockerfile
+    container_name: detectforge
     ports:
-      - "8000:8000"
+      - "8077:8077"
     volumes:
-      - detectforge_db:/data
+      - detectforge_db:/data                 # persists SQLite across restarts
     env_file:
-      - .env
+      - .env                                 # copy .env.example → .env and fill in creds
     environment:
       - DATABASE_URL=sqlite:////data/detectforge.db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8077/health')"]
       interval: 30s
       timeout: 10s
+      start_period: 15s
       retries: 3
 
 volumes:
   detectforge_db:
+    driver: local

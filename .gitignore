@@ -34,6 +34,6 @@ data/botsv3_extracted/
 uvicorn.err
 uvicorn.out
 
-# Screenshots / local demo artifacts
-screenshots/
+# Root-level screenshots scratch folder (not the docs/screenshots/ README assets)
+/screenshots/
 

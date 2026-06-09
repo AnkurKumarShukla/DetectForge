@@ -1,28 +1,52 @@
-# Keep secrets, local state, and bulk out of the image
+# ── Secrets — NEVER bake credentials into an image ───────────────────────────
 .env
+*.env
+!.env.example
+
+# ── Dependency environment ────────────────────────────────────────────────────
+# Recreated from uv.lock during docker build
 .venv/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
 __pycache__/
 *.py[oc]
 *.egg-info/
+
+# ── Git ───────────────────────────────────────────────────────────────────────
 .git/
 .gitignore
+.gitattributes
 
-# Runtime / local artifacts
+# ── Runtime / local artifacts ─────────────────────────────────────────────────
 *.db
 *.db-shm
 *.db-wal
 *.log
 uvicorn.err
 uvicorn.out
+reseed_scan.log
 
-# Large cached data (the app downloads ATT&CK on first run)
-knowledge/attack/enterprise-attack.json
+# NOTE: knowledge/attack/enterprise-attack.json IS included intentionally —
+# baking the 46 MB ATT&CK JSON into the image avoids a network download on
+# every cold start and makes the container work offline.
 data/
 
-# Dev-only
+# ── Dev-only ──────────────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 tests/
 commands/
 screenshots/
+docs/
+
+# ── Windows demo scripts ──────────────────────────────────────────────────────
+*.ps1
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
