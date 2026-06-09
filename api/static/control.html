@@ -28,6 +28,7 @@
   button:hover { filter:brightness(1.25); }
   button:disabled { opacity:.5; cursor:not-allowed; }
   button.scan { background:var(--blue); }
+  button.sim { background:#8e44ad; }
   button.drift { background:var(--amber); color:#000; }
   button.approve { background:var(--green); color:#000; }
   button.reject { background:var(--red); }
@@ -76,6 +77,7 @@
       <option value="technology">Technology</option>
     </select>
     <button class="scan" id="scanBtn" onclick="runScan()">&#9658; Run Agent Scan</button>
+    <button class="sim" onclick="simulateDrift()">&#128296; Simulate Schema Change</button>
     <button class="drift" onclick="triggerDrift()">&#9888; Trigger Drift Monitor</button>
   </div>
   <div class="stat">
@@ -267,6 +269,15 @@ async function pollScan(sid) {
       setTimeout(()=>pollScan(sid), 2500);
     }
   } catch(e) { setTimeout(()=>pollScan(sid), 2500); }
+}
+
+async function simulateDrift() {
+  try {
+    const r = await (await fetch(`${API}/demo/simulate-drift`, {method:'POST'})).json();
+    if (r.detail) { toast('&#9888; Cannot simulate', r.detail, 'warn'); return; }
+    toast('&#128296; Schema change simulated', `Field "${r.renamed_field}" renamed — ${r.technique_id}'s detection will now break.`, 'warn');
+    log(`Simulated schema drift: field "${r.renamed_field}" that ${r.technique_id} depends on was renamed`, 'warn');
+  } catch(e) { toast('Simulate failed', String(e), 'err'); }
 }
 
 async function triggerDrift() {

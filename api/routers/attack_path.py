@@ -1,7 +1,7 @@
 """Attack path graph and kill chain endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.intelligence.attack_loader import get_attack_loader
@@ -74,6 +74,37 @@ def get_actor_chain(
             }
             for s in result.chain
         ],
+    }
+
+
+@router.post("/demo/simulate-drift")
+def simulate_drift(db: Annotated[Session, Depends(get_db)]):
+    """Demo helper: simulate a log-schema change by 'renaming' a field a deployed
+    detection depends on. The next drift-monitor run then detects SCHEMA_DRIFT and
+    self-heals the rule. Mirrors a real-world breakage (a field gets renamed)."""
+    rule = (
+        db.query(Rule)
+        .filter(Rule.status == "DEPLOYED")
+        .order_by(Rule.deployed_at.desc())
+        .first()
+    )
+    if not rule:
+        raise HTTPException(status_code=400, detail="No deployed rule to break — approve one first")
+    renamed = "Account_Name_RENAMED_v2"
+    rule.index_name = rule.index_name or "botsv3"
+    rule.sourcetype = rule.sourcetype or "WinEventLog:Security"
+    rule.required_fields = [renamed]
+    db.commit()
+    try:
+        from dashboard.setup_dashboards import refresh_dashboards
+        refresh_dashboards(db)
+    except Exception:
+        pass
+    return {
+        "technique_id": rule.technique_id,
+        "technique_name": rule.technique_name,
+        "renamed_field": renamed,
+        "message": "Schema change simulated. Now click Trigger Drift Monitor — the agent will detect it and self-heal.",
     }
 
 
