@@ -403,16 +403,6 @@ Import the 4 dashboard JSONs from `dashboard/` into Splunk Dashboard Studio:
 
 ---
 
-## Hackathon Context
-
-| Prize Target | Qualifier |
-|-------------|-----------|
-| Grand Prize ($7k) | End-to-end agentic ops pipeline |
-| Best of Security ($3k) | Autonomous detection engineering |
-| Best Use of MCP Server ($1k) | All 6 pipeline phases use MCP tools |
-| Best Use of Splunk Hosted Models ($1k) | `saia_*` tools (pending config) |
-
----
 
 ## License
 
