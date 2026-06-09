@@ -58,9 +58,9 @@ DetectForge maps the real ALPHV/BlackCat kill chain (T1566 → T1078 → T1021 �
 
 ## Architecture
 
-![Executive Architecture](docs/architecture/executive_architecture.png)
+![Executive Architecture](architecture_overview.png)
 
-**Full technical architecture** → [`docs/architecture.md`](docs/architecture.md)
+**Full technical architecture (Splunk integration · AI agents · data flow)** → [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ### Tech Stack
 
@@ -377,6 +377,8 @@ detectforge/
 │   ├── architecture.md       # Full technical architecture (Mermaid diagrams)
 │   ├── architecture/         # Architecture diagrams (PNG)
 │   └── screenshots/          # App screenshots
+├── ARCHITECTURE.md           # Architecture diagram (Splunk · AI · data flow) — submission requirement
+├── architecture_overview.png # Architecture overview PNG — submission requirement
 ├── Dockerfile                # Multi-stage build (builder + runtime)
 ├── docker-compose.yml        # Single-command startup
 ├── .env.example              # Config template
