@@ -17,5 +17,7 @@ Write-Host "[3/3] Installing fresh baseline (leaves T1078 + T1021 open)..." -For
 uv run python scripts/seed_baseline.py | Select-Object -Last 1
 
 Write-Host ""
-Write-Host "Clean RED state ready. ALPHV/BlackCat is at 60%, T1078 is a blind spot." -ForegroundColor Green
-Write-Host "Next: run 2_start_api.ps1" -ForegroundColor Green
+Write-Host "Baseline reset: database cleared, 16 detections installed, T1078 + T1021 left open." -ForegroundColor Green
+Write-Host "NOTE: the dashboards are NOT updated yet - the RED 60% state appears" -ForegroundColor Yellow
+Write-Host "      only AFTER the scan in step 3 (the agent classifies the baseline then)." -ForegroundColor Yellow
+Write-Host "Next: run 2_start_api.ps1, then 3_run_scan.ps1" -ForegroundColor Green
