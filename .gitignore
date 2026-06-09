@@ -33,3 +33,7 @@ data/botsv3_extracted/
 
 uvicorn.err
 uvicorn.out
+
+# Screenshots / local demo artifacts
+screenshots/
+

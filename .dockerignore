@@ -1,0 +1,28 @@
+# Keep secrets, local state, and bulk out of the image
+.env
+.venv/
+__pycache__/
+*.py[oc]
+*.egg-info/
+.git/
+.gitignore
+
+# Runtime / local artifacts
+*.db
+*.db-shm
+*.db-wal
+*.log
+uvicorn.err
+uvicorn.out
+
+# Large cached data (the app downloads ATT&CK on first run)
+knowledge/attack/enterprise-attack.json
+data/
+
+# Dev-only
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+commands/
+screenshots/
