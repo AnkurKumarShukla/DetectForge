@@ -47,6 +47,8 @@ DetectForge runs a **6-phase LangGraph agent pipeline** that turns your Splunk e
 
 ## Demo: The ALPHV / Change Healthcare Story
 
+[![Watch the Demo](https://img.youtube.com/vi/RE-BmIuSu2o/maxresdefault.jpg)](https://youtu.be/RE-BmIuSu2o?si=dFKL0z3hvdyvcU0L)
+
 DetectForge maps the real ALPHV/BlackCat kill chain (T1566 → T1078 → T1021 → T1003 → T1486) against your environment, shows you where the blind spots are, generates the missing detections, and lets an analyst approve them with one click.
 
 ![Impact Story](docs/architecture/impact_story.png)
