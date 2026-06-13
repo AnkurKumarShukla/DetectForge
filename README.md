@@ -18,6 +18,15 @@ It reads your live Splunk environment, maps what you're missing, generates valid
 
 ---
 
+### 🗺️ Architecture
+
+[![Architecture Diagram](architecture.jpg)](ARCHITECTURE.md)
+
+> 📄 **[View full architecture →  ARCHITECTURE.md](ARCHITECTURE.md)**  
+> 🖼️ **[Architecture Diagram (PNG)](architecture_diagram.png)** · **[Detailed Draw.io](architecture_diagram.drawio)**
+
+---
+
 ![DetectForge HITL Control Panel](docs/screenshots/hitl_control_panel.png)
 
 </div>
@@ -66,7 +75,7 @@ DetectForge maps the real ALPHV/BlackCat kill chain (T1566 → T1078 → T1021 �
 
 ## Architecture
 
-![Executive Architecture](architecture_overview.png)
+![Executive Architecture](architecture_diagram.png)
 
 **Full technical architecture (Splunk integration · AI agents · data flow)** → [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
@@ -386,7 +395,7 @@ detectforge/
 │   ├── architecture/         # Architecture diagrams (PNG)
 │   └── screenshots/          # App screenshots
 ├── ARCHITECTURE.md           # Architecture diagram (Splunk · AI · data flow) — submission requirement
-├── architecture_overview.png # Architecture overview PNG — submission requirement
+├── architecture_diagram.png # Architecture overview PNG — submission requirement
 ├── Dockerfile                # Multi-stage build (builder + runtime)
 ├── docker-compose.yml        # Single-command startup
 ├── .env.example              # Config template
