@@ -1,0 +1,250 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="DetectForge Architecture" id="detectforge-arch">
+    <mxGraphModel dx="1426" dy="820" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1560" pageHeight="1160" math="0" shadow="0" background="#FBFCFE">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ================= TITLE ================= -->
+        <mxCell id="title" value="DetectForge&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;Autonomous MITRE ATT&amp;amp;CK Detection-Engineering Agent on Splunk" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#11203A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="18" width="1480" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Splunk Agentic Ops Hackathon 2026 · Security Track&amp;nbsp;&amp;nbsp;|&amp;nbsp;&amp;nbsp;reads live Splunk → maps ATT&amp;amp;CK gaps → generates &amp;amp; validates SPL → human review → deploys → monitors drift" style="text;html=1;align=center;verticalAlign=middle;fontSize=12;fontColor=#5A6B86;" vertex="1" parent="1">
+          <mxGeometry x="40" y="58" width="1480" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- ================= BAND 1: USERS ================= -->
+        <mxCell id="cb_users" value="USERS &amp;amp; INTERFACES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF3FB;strokeColor=#6C8EBF;verticalAlign=top;align=left;fontSize=13;fontStyle=1;fontColor=#3A5377;spacingLeft=14;spacingTop=8;arcSize=3;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="96" width="1480" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="n_soc" value="&lt;b&gt;👤 SOC Analyst&lt;/b&gt;&lt;br&gt;security operations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#6C8EBF;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#1A3A5C;" vertex="1" parent="1">
+          <mxGeometry x="110" y="140" width="220" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="n_panel" value="&lt;b&gt;🖥 HITL Control Panel&lt;/b&gt;&lt;br&gt;FastAPI&amp;nbsp; GET /&lt;br&gt;approve · edit · reject SPL&lt;br&gt;run scan · trigger drift" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B0E3E6;gradientColor=#ffffff;gradientDirection=north;strokeColor=#0E8088;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#0B3E40;" vertex="1" parent="1">
+          <mxGeometry x="560" y="128" width="370" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dash" value="&lt;b&gt;📊 Splunk Dashboard Studio&lt;/b&gt;&lt;br&gt;4 live dashboards&lt;br&gt;ATT&amp;amp;CK heatmap · FAIR $ risk&lt;br&gt;rule health · drift timeline" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;gradientColor=#ffffff;gradientDirection=north;strokeColor=#5C9C4E;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#1E4D17;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="128" width="370" height="84" as="geometry" />
+        </mxCell>
+
+        <!-- ================= BAND 2: AI MODELS ================= -->
+        <mxCell id="cb_models" value="AI MODEL LAYER&amp;nbsp;&amp;nbsp;—&amp;nbsp;&amp;nbsp;open-source-first" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4EEF8;strokeColor=#9673A6;verticalAlign=top;align=left;fontSize=13;fontStyle=1;fontColor=#664A7A;spacingLeft=14;spacingTop=8;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="248" width="1480" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="n_fsec" value="&lt;b&gt;🛡 Cisco Foundation-sec-1.1-8b&lt;/b&gt;&lt;br&gt;&lt;b style=&quot;color:#7A2E9E&quot;&gt;PRIMARY MODEL&lt;/b&gt; · open-source security LLM&lt;br&gt;classify existing rules → ATT&amp;amp;CK&lt;br&gt;generate &amp;amp; review SPL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D6B3E8;gradientColor=#ffffff;gradientDirection=north;strokeColor=#7A2E9E;strokeWidth=3;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#3D1453;" vertex="1" parent="1">
+          <mxGeometry x="110" y="292" width="410" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="n_llama" value="&lt;b&gt;🦙 Llama 3.3 70B Instruct&lt;/b&gt;&lt;br&gt;&lt;b&gt;FALLBACK&lt;/b&gt; · open-source (via Together AI)&lt;br&gt;auto-engaged on empty / timeout&lt;br&gt;keeps the agent loop reliable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;gradientColor=#ffffff;gradientDirection=north;strokeColor=#9673A6;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#3D1453;" vertex="1" parent="1">
+          <mxGeometry x="575" y="292" width="390" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="n_claude" value="&lt;b&gt;💬 Claude Sonnet&lt;/b&gt;&lt;br&gt;natural-language SIEM Q&amp;amp;A&lt;br&gt;POST /ask (streaming)&lt;br&gt;&lt;i&gt;human chat surface only&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;gradientColor=#ffffff;gradientDirection=north;strokeColor=#9673A6;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#3D1453;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="292" width="400" height="92" as="geometry" />
+        </mxCell>
+
+        <!-- ================= BAND 3: AGENT PIPELINE ================= -->
+        <mxCell id="cb_agent" value="DETECTFORGE AGENT&amp;nbsp;&amp;nbsp;—&amp;nbsp;&amp;nbsp;FastAPI · LangGraph StateGraph" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEF;strokeColor=#D6B656;verticalAlign=top;align=left;fontSize=13;fontStyle=1;fontColor=#8A6D10;spacingLeft=14;spacingTop=8;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="424" width="1480" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="n_api" value="⚡&amp;nbsp; &lt;b&gt;FastAPI REST API&lt;/b&gt; :8077&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp;/scan&amp;nbsp; /review&amp;nbsp; /coverage&amp;nbsp; /gaps&amp;nbsp; /ask" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;gradientColor=#ffffff;gradientDirection=north;strokeColor=#E8A33D;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#7A4A00;" vertex="1" parent="1">
+          <mxGeometry x="90" y="462" width="1380" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="&lt;b&gt;①&lt;/b&gt;&lt;br&gt;Env Scanner&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;fingerprint schema&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="90" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="&lt;b&gt;②&lt;/b&gt;&lt;br&gt;Classify + Gap&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;FAIR $ exposure&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="324" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="&lt;b&gt;③&lt;/b&gt;&lt;br&gt;SPL Generator&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;schema-aware&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="558" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="&lt;b&gt;④&lt;/b&gt;&lt;br&gt;Validator&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;real-data hits&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="792" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="&lt;b&gt;⑤&lt;/b&gt;&lt;br&gt;Auto-Tune +&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;Human Review&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="1026" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="&lt;b&gt;⑥&lt;/b&gt;&lt;br&gt;Deploy +&lt;br&gt;&lt;font color=&quot;#8a6d10&quot;&gt;Drift Monitor&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D6B656;fontSize=12;align=center;shadow=1;arcSize=12;fontColor=#5C4708;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="522" width="208" height="66" as="geometry" />
+        </mxCell>
+        <!-- pipeline internal arrows -->
+        <mxCell id="e_p1p2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#C9A227;strokeWidth=2;" edge="1" parent="1" source="p1" target="p2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_p2p3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#C9A227;strokeWidth=2;" edge="1" parent="1" source="p2" target="p3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_p3p4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#C9A227;strokeWidth=2;" edge="1" parent="1" source="p3" target="p4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_p4p5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#C9A227;strokeWidth=2;" edge="1" parent="1" source="p4" target="p5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_p5p6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#C9A227;strokeWidth=2;" edge="1" parent="1" source="p5" target="p6"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ================= BAND 4: SPLUNK ================= -->
+        <mxCell id="cb_splunk" value="SPLUNK ENTERPRISE 10.4&amp;nbsp;&amp;nbsp;—&amp;nbsp;&amp;nbsp;platform · MCP · products" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDF6EC;strokeColor=#5C9C4E;verticalAlign=top;align=left;fontSize=13;fontStyle=1;fontColor=#2E6B22;spacingLeft=14;spacingTop=8;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="628" width="1480" height="252" as="geometry" />
+        </mxCell>
+        <mxCell id="n_mcp" value="&lt;b&gt;🔌 Splunk MCP Server&lt;/b&gt;&lt;br&gt;&lt;b&gt;14 tools&lt;/b&gt; · JSON-RPC&lt;br&gt;run_query · get_knowledge_objects&lt;br&gt;field_summary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B6DDAE;gradientColor=#ffffff;gradientDirection=north;strokeColor=#3E8E2E;strokeWidth=3;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#173E0F;" vertex="1" parent="1">
+          <mxGeometry x="110" y="672" width="400" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="n_saia" value="&lt;b&gt;✨ Splunk Hosted Models&lt;/b&gt;&lt;br&gt;saia_generate_spl · saia_optimize_spl&lt;br&gt;saia_explain_spl&lt;br&gt;&lt;i&gt;native in-platform SPL generation&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B6DDAE;gradientColor=#ffffff;gradientDirection=north;strokeColor=#3E8E2E;strokeWidth=3;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#173E0F;" vertex="1" parent="1">
+          <mxGeometry x="575" y="672" width="400" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="n_bots" value="&lt;b&gt;🗄 BOTS v3 Dataset&lt;/b&gt;&amp;nbsp; index=botsv3&lt;br&gt;WinEventLog:Security · stream:dns&lt;br&gt;aws:cloudtrail · osquery · cisco:asa&lt;br&gt;&lt;i&gt;real telemetry — every rule validated here&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#B6DDAE;gradientColor=#ffffff;gradientDirection=north;strokeColor=#3E8E2E;strokeWidth=3;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#173E0F;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="672" width="400" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="n_rest" value="&lt;b&gt;🔧 Splunk REST API&lt;/b&gt; :8089&lt;br&gt;deploy savedsearches (idempotent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;gradientColor=#ffffff;gradientDirection=north;strokeColor=#5C9C4E;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#1E4D17;" vertex="1" parent="1">
+          <mxGeometry x="110" y="778" width="400" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="n_hec" value="&lt;b&gt;📡 Splunk HEC&lt;/b&gt;&lt;br&gt;→ detectforge_activity index (agentic-ops log)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;gradientColor=#ffffff;gradientDirection=north;strokeColor=#5C9C4E;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#1E4D17;" vertex="1" parent="1">
+          <mxGeometry x="575" y="778" width="400" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="n_saved" value="&lt;b&gt;📋 Saved Searches&lt;/b&gt;&lt;br&gt;16-rule seed baseline + agent-deployed detections" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;gradientColor=#ffffff;gradientDirection=north;strokeColor=#5C9C4E;fontSize=12;align=center;shadow=1;arcSize=8;fontColor=#1E4D17;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="778" width="400" height="66" as="geometry" />
+        </mxCell>
+
+        <!-- ================= BAND 5: INTEL + DB ================= -->
+        <mxCell id="cb_intel" value="THREAT INTELLIGENCE &amp;amp; PERSISTENCE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF6EC;strokeColor=#D79B00;verticalAlign=top;align=left;fontSize=13;fontStyle=1;fontColor=#8A6400;spacingLeft=14;spacingTop=8;arcSize=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="904" width="1480" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="n_atk" value="&lt;b&gt;🎯 MITRE ATT&amp;amp;CK&lt;/b&gt;&lt;br&gt;697 techniques · 14 tactics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D79B00;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#6B4D00;" vertex="1" parent="1">
+          <mxGeometry x="90" y="948" width="330" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="n_kev" value="&lt;b&gt;⚠ CISA KEV&lt;/b&gt;&lt;br&gt;known-exploited vuln feed (daily sync)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D79B00;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#6B4D00;" vertex="1" parent="1">
+          <mxGeometry x="440" y="948" width="330" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="n_kcm" value="&lt;b&gt;🕸 Kill-Chain Graph&lt;/b&gt; (networkx)&lt;br&gt;ALPHV / BlackCat&amp;nbsp; 60% → 80% after fix" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;gradientColor=#ffffff;gradientDirection=north;strokeColor=#D79B00;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#6B4D00;" vertex="1" parent="1">
+          <mxGeometry x="790" y="948" width="330" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="n_db" value="&lt;b&gt;💾 SQLite + SQLAlchemy&lt;/b&gt;&lt;br&gt;rules · gaps · coverage · drift" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F0F0;gradientColor=#ffffff;gradientDirection=north;strokeColor=#7A7A7A;fontSize=12;align=center;shadow=1;arcSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="948" width="330" height="72" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CROSS-BAND FLOWS ================= -->
+
+        <!-- users -->
+        <mxCell id="f1" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#6C8EBF;strokeWidth=1.5;fontSize=10;fontColor=#44506b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="n_soc" target="n_panel"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f2" value="views" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#6C8EBF;strokeWidth=1.5;fontSize=10;fontColor=#44506b;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="n_soc" target="n_dash"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f3" value="scan / approve (REST)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#0E8088;strokeWidth=1.5;fontSize=10;fontColor=#0B3E40;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_panel" target="n_api"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- agent <-> models
+             f4: p2 top-centre → n_fsec bottom-left (25%)
+             f5: p3 top-centre → n_fsec bottom-right (75%)
+             Both travel upward but hit different entry points so they never cross. -->
+        <mxCell id="f4" value="classify rules" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7A2E9E;strokeWidth=1.5;fontSize=10;fontColor=#3D1453;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2" target="n_fsec"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f5" value="generate + review SPL" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7A2E9E;strokeWidth=1.5;fontSize=10;fontColor=#3D1453;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3" target="n_fsec"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f6" value="on empty / timeout" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9673A6;strokeWidth=1.5;fontSize=10;fontColor=#3D1453;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="n_fsec" target="n_llama"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <!-- f7: /ask exits n_api top-right corner → n_claude (upper-right model) -->
+        <mxCell id="f7" value="/ask" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#9673A6;strokeWidth=1.5;fontSize=10;fontColor=#3D1453;labelBackgroundColor=#ffffff;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_api" target="n_claude"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- agent <-> splunk
+             f8: p1 straight down to n_mcp top-left (25%)
+             f9: p4 down into Splunk header gap (y=640) then left to n_mcp top-right (75%)
+                 Keeps horizontal corridor above all Splunk components (they start y=672).
+             f10: p3 straight down to n_saia (same column) -->
+        <mxCell id="f8" value="discover schema" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1" target="n_mcp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f9" value="validate on real data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4" target="n_mcp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="896" y="640" />
+              <mxPoint x="410" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f10" value="native SPL gen" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3" target="n_saia"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- f11: p6 (exit bottom-left 25%) → y=656 corridor → left margin (x=80) → n_rest left side
+             f12: p6 (exit bottom-right 75%) → y=668 corridor → x=565 (gap between n_mcp & n_saia) → n_hec left side
+             Both horizontal runs stay above Splunk components (n_mcp/n_saia/n_hec top = y=672). -->
+        <mxCell id="f11" value="deploy detection" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="n_rest">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1312" y="656" />
+              <mxPoint x="80" y="656" />
+              <mxPoint x="80" y="811" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f12" value="log agent actions" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="n_hec">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1416" y="668" />
+              <mxPoint x="565" y="668" />
+              <mxPoint x="565" y="811" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- splunk internal -->
+        <mxCell id="f13" value="query" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="n_mcp" target="n_bots"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#3E8E2E;strokeWidth=1.5;" edge="1" parent="1" source="n_saia" target="n_bots"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="f15" value="write rule" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3E8E2E;strokeWidth=1.5;fontSize=10;fontColor=#173E0F;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="n_rest" target="n_saved"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- intel → agent
+             f16: n_atk top → exit upward → y=920 step-across → x=62 left margin → y=606 → enter p2 bottom-left (25%)
+             f17: n_kev top → exit upward → y=920 → x=540 (gap between n_mcp x≤510 and n_saia x≥575) → y=606 → enter p2 bottom-right (75%)
+             Neither path crosses any Splunk component box. -->
+        <mxCell id="f16" value="697 techniques" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#D79B00;strokeWidth=1.5;fontSize=10;fontColor=#6B4D00;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_atk" target="p2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="255" y="920" />
+              <mxPoint x="62" y="920" />
+              <mxPoint x="62" y="606" />
+              <mxPoint x="376" y="606" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f17" value="threat intel" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#D79B00;strokeWidth=1.5;fontSize=10;fontColor=#6B4D00;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_kev" target="p2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="605" y="920" />
+              <mxPoint x="540" y="920" />
+              <mxPoint x="540" y="606" />
+              <mxPoint x="480" y="606" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- f18: p6 (exit right) → right margin x=1510 → down → n_kcm (enter right)
+             f19: p5 (exit right) → right margin x=1495 → down → n_db  (enter right)
+             Staggered x so the two descending lines are visually distinct. -->
+        <mxCell id="f18" value="re-score path" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#D79B00;strokeWidth=1.5;fontSize=10;fontColor=#6B4D00;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p6" target="n_kcm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1510" y="555" />
+              <mxPoint x="1510" y="984" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f19" value="persist state" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7A7A7A;strokeWidth=1.5;fontSize=10;fontColor=#333333;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="p5" target="n_db">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1495" y="555" />
+              <mxPoint x="1495" y="984" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- splunk → dashboards
+             f20: n_hec (exit right) → far-right margin x=1530 → up → n_dash bottom-right corner
+             f21: n_db  (exit right) → right margin  x=1515 → up → n_dash bottom (85%)
+             Different x corridors prevent overlap. -->
+        <mxCell id="f20" value="activity stream" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5C9C4E;strokeWidth=1.5;fontSize=10;fontColor=#1E4D17;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_hec" target="n_dash">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1530" y="811" />
+              <mxPoint x="1530" y="212" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f21" value="CSV lookups" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#7A7A7A;strokeWidth=1.5;fontSize=10;fontColor=#333333;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.85;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="n_db" target="n_dash">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1515" y="984" />
+              <mxPoint x="1515" y="212" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- legend -->
+        <mxCell id="legend" value="&lt;b&gt;Legend&lt;/b&gt;&amp;nbsp;&amp;nbsp; ▬ solid = primary data flow&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp; ┄ dashed = fallback / optional path&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp; &lt;b style=&quot;color:#3E8E2E&quot;&gt;thick green&lt;/b&gt; = core Splunk product&amp;nbsp;&amp;nbsp;·&amp;nbsp;&amp;nbsp; &lt;b style=&quot;color:#7A2E9E&quot;&gt;thick purple&lt;/b&gt; = primary model" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#5A6B86;" vertex="1" parent="1">
+          <mxGeometry x="44" y="1066" width="1480" height="24" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

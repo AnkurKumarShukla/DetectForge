@@ -16,7 +16,7 @@ wheels/
 *.db
 *.db-shm
 *.db-wal
-
+idea.md
 # Logs
 *.log
 

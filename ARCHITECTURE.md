@@ -846,3 +846,4 @@ BOTS v3 is raw event data with zero pre-built detection rules. All 100 saved sea
 in the default install are Splunk ops/health queries. The seed baseline installs 16
 realistic, ATT&CK-annotated detections to give the classifier a meaningful
 "coverage before" state (2.4% over 697 techniques), then DetectForge closes the gaps.
+
