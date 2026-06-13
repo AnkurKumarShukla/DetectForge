@@ -28,6 +28,13 @@ It reads your live Splunk environment, maps what you're missing, generates valid
 | [architecture_diagram.md](architecture_diagram.md) | Detailed Mermaid architecture diagram |
 | [architecture_diagram.drawio](architecture_diagram.drawio) | Editable draw.io source diagram |
 
+<details>
+<summary>🖼️ Click to preview architecture diagram</summary>
+
+![DetectForge Architecture](architecture.jpg)
+
+</details>
+
 ---
 
 ![DetectForge HITL Control Panel](docs/screenshots/hitl_control_panel.png)
