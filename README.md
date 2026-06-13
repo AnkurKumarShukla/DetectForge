@@ -20,10 +20,13 @@ It reads your live Splunk environment, maps what you're missing, generates valid
 
 ### 🗺️ Architecture
 
-[![Architecture Diagram](architecture.jpg)](ARCHITECTURE.md)
-
-> 📄 **[View full architecture →  ARCHITECTURE.md](ARCHITECTURE.md)**  
-> 🖼️ **[Architecture Diagram (PNG)](architecture_diagram.png)** · **[Detailed Draw.io](architecture_diagram.drawio)**
+| File | Description |
+|------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Full technical architecture — agent pipeline, data model, kill-chain, component inventory |
+| [architecture.jpg](architecture.jpg) | System architecture overview image |
+| [architecture_diagram.png](architecture_diagram.png) | Architecture diagram (submission requirement) |
+| [architecture_diagram.md](architecture_diagram.md) | Detailed Mermaid architecture diagram |
+| [architecture_diagram.drawio](architecture_diagram.drawio) | Editable draw.io source diagram |
 
 ---
 
