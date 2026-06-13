@@ -11,6 +11,10 @@
 
 ## 1. System Architecture Overview
 
+![DetectForge Architecture](architecture.jpg)
+
+---
+
 ```mermaid
 %%{init: {"theme": "dark", "themeVariables": {"primaryColor":"#1a1a2e","edgeLabelBackground":"#16213e"}}}%%
 flowchart TB
