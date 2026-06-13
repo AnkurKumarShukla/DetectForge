@@ -11,7 +11,7 @@
 
 ## 1. System Architecture Overview
 
-![DetectForge Architecture](../../architecture.jpg)
+![DetectForge Architecture](../architecture.jpg)
 
 ---
 
